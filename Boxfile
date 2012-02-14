@@ -3,4 +3,4 @@ web1:
   shared_writable_dirs:
     - wp-content/uploads/
 db1:
-	name wp-db
+  name: wp-db
