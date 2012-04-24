@@ -1,9 +1,9 @@
 web1: 
-  name: shealanforshaw 
+  name: wp-web 
   shared_writable_dirs:
     - wp-content/uploads/
     - wp-content/themes/
   after_build:
     - "mv pagoda/wp-config.php wp-config.php"
 db1:
-  name: shealanforshaw
+  name: wp-db
