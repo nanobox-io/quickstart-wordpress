@@ -10,9 +10,7 @@ The following is an explanation of how this Quickstart was created so you can us
         after_build:
         - "mv pagoda/wp-config.php wp-config.php"
     </code>
-</pre>
-file: /Boxfile
-    
+</pre>  
 
 * Database Component: An empty database was created by adding a db component to the Boxfile.
 
@@ -22,4 +20,3 @@ file: /Boxfile
             name: wp-db
     </code>
 </pre>
-file: /Boxfile
