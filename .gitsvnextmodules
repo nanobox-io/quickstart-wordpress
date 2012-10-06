@@ -1,0 +1,9 @@
+[submodule "trunk"]
+	path = trunk
+	owner = /
+	url = http://core.svn.wordpress.org/trunk
+	revision = 22126
+	branch = /
+	fetch = :refs/remotes/git-svn
+	remote = svn
+	type = dir
