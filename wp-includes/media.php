@@ -236,34 +236,6 @@ function get_image_tag($id, $alt, $title, $align, $size='medium') {
 }
 
 /**
- * Load an image from a string, if PHP supports it.
- *
- * @since 2.1.0
- *
- * @param string $file Filename of the image to load.
- * @return resource The resulting image resource on success, Error string on failure.
- */
-function wp_load_image( $file ) {
-	if ( is_numeric( $file ) )
-		$file = get_attached_file( $file );
-
-	if ( ! file_exists( $file ) )
-		return sprintf(__('File &#8220;%s&#8221; doesn&#8217;t exist?'), $file);
-
-	if ( ! function_exists('imagecreatefromstring') )
-		return __('The GD image library is not installed.');
-
-	// Set artificially high because GD uses uncompressed images in memory
-	@ini_set( 'memory_limit', apply_filters( 'image_memory_limit', WP_MAX_MEMORY_LIMIT ) );
-	$image = imagecreatefromstring( file_get_contents( $file ) );
-
-	if ( !is_resource( $image ) )
-		return sprintf(__('File &#8220;%s&#8221; is not an image.'), $file);
-
-	return $image;
-}
-
-/**
  * Calculates the new dimensions for a downsampled image.
  *
  * If either width or height are empty, no constraint is applied on
@@ -393,92 +365,6 @@ function image_resize_dimensions($orig_w, $orig_h, $dest_w, $dest_h, $crop = fal
 }
 
 /**
- * Scale down an image to fit a particular size and save a new copy of the image.
- *
- * The PNG transparency will be preserved using the function, as well as the
- * image type. If the file going in is PNG, then the resized image is going to
- * be PNG. The only supported image types are PNG, GIF, and JPEG.
- *
- * Some functionality requires API to exist, so some PHP version may lose out
- * support. This is not the fault of WordPress (where functionality is
- * downgraded, not actual defects), but of your PHP version.
- *
- * @since 2.5.0
- *
- * @param string $file Image file path.
- * @param int $max_w Maximum width to resize to.
- * @param int $max_h Maximum height to resize to.
- * @param bool $crop Optional. Whether to crop image or resize.
- * @param string $suffix Optional. File suffix.
- * @param string $dest_path Optional. New image file path.
- * @param int $jpeg_quality Optional, default is 90. Image quality percentage.
- * @return mixed WP_Error on failure. String with new destination path.
- */
-function image_resize( $file, $max_w, $max_h, $crop = false, $suffix = null, $dest_path = null, $jpeg_quality = 90 ) {
-
-	$image = wp_load_image( $file );
-	if ( !is_resource( $image ) )
-		return new WP_Error( 'error_loading_image', $image, $file );
-
-	$size = @getimagesize( $file );
-	if ( !$size )
-		return new WP_Error('invalid_image', __('Could not read image size'), $file);
-	list($orig_w, $orig_h, $orig_type) = $size;
-
-	$dims = image_resize_dimensions($orig_w, $orig_h, $max_w, $max_h, $crop);
-	if ( !$dims )
-		return new WP_Error( 'error_getting_dimensions', __('Could not calculate resized image dimensions') );
-	list($dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h) = $dims;
-
-	$newimage = wp_imagecreatetruecolor( $dst_w, $dst_h );
-
-	imagecopyresampled( $newimage, $image, $dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h);
-
-	// convert from full colors to index colors, like original PNG.
-	if ( IMAGETYPE_PNG == $orig_type && function_exists('imageistruecolor') && !imageistruecolor( $image ) )
-		imagetruecolortopalette( $newimage, false, imagecolorstotal( $image ) );
-
-	// we don't need the original in memory anymore
-	imagedestroy( $image );
-
-	// $suffix will be appended to the destination filename, just before the extension
-	if ( !$suffix )
-		$suffix = "{$dst_w}x{$dst_h}";
-
-	$info = pathinfo($file);
-	$dir = $info['dirname'];
-	$ext = $info['extension'];
-	$name = wp_basename($file, ".$ext");
-
-	if ( !is_null($dest_path) and $_dest_path = realpath($dest_path) )
-		$dir = $_dest_path;
-	$destfilename = "{$dir}/{$name}-{$suffix}.{$ext}";
-
-	if ( IMAGETYPE_GIF == $orig_type ) {
-		if ( !imagegif( $newimage, $destfilename ) )
-			return new WP_Error('resize_path_invalid', __( 'Resize path invalid' ));
-	} elseif ( IMAGETYPE_PNG == $orig_type ) {
-		if ( !imagepng( $newimage, $destfilename ) )
-			return new WP_Error('resize_path_invalid', __( 'Resize path invalid' ));
-	} else {
-		// all other formats are converted to jpg
-		if ( 'jpg' != $ext && 'jpeg' != $ext )
-			$destfilename = "{$dir}/{$name}-{$suffix}.jpg";
-		if ( !imagejpeg( $newimage, $destfilename, apply_filters( 'jpeg_quality', $jpeg_quality, 'image_resize' ) ) )
-			return new WP_Error('resize_path_invalid', __( 'Resize path invalid' ));
-	}
-
-	imagedestroy( $newimage );
-
-	// Set correct file permissions
-	$stat = stat( dirname( $destfilename ));
-	$perms = $stat['mode'] & 0000666; //same permissions as parent folder, strip off the executable bits
-	@ chmod( $destfilename, $perms );
-
-	return $destfilename;
-}
-
-/**
  * Resize an image to make a thumbnail or intermediate size.
  *
  * The returned array has the file size, the image width, and image height. The
@@ -493,16 +379,18 @@ function image_resize( $file, $max_w, $max_h, $crop = false, $suffix = null, $de
  * @param bool $crop Optional, default is false. Whether to crop image to specified height and width or resize.
  * @return bool|array False, if no image was created. Metadata array on success.
  */
-function image_make_intermediate_size($file, $width, $height, $crop=false) {
+function image_make_intermediate_size( $file, $width, $height, $crop = false ) {
 	if ( $width || $height ) {
-		$resized_file = image_resize($file, $width, $height, $crop);
-		if ( !is_wp_error($resized_file) && $resized_file && $info = getimagesize($resized_file) ) {
-			$resized_file = apply_filters('image_make_intermediate_size', $resized_file);
-			return array(
-				'file' => wp_basename( $resized_file ),
-				'width' => $info[0],
-				'height' => $info[1],
-			);
+		$editor = WP_Image_Editor::get_instance( $file );
+
+		if ( is_wp_error( $editor->resize( $width, $height, $crop ) ) );
+			return false;
+
+		$resized_file = $editor->save();
+
+		if ( ! is_wp_error( $resized_file ) && $resized_file ) {
+			unset( $resized_file['path'] );
+			return $resized_file;
 		}
 	}
 	return false;
@@ -655,7 +543,7 @@ function wp_get_attachment_image($attachment_id, $size = 'thumbnail', $icon = fa
 		$hwstring = image_hwstring($width, $height);
 		if ( is_array($size) )
 			$size = join('x', $size);
-		$attachment =& get_post($attachment_id);
+		$attachment = get_post($attachment_id);
 		$default_attr = array(
 			'src'	=> $src,
 			'class'	=> "attachment-$size",
@@ -775,7 +663,7 @@ add_shortcode('gallery', 'gallery_shortcode');
  * @return string HTML content to display gallery.
  */
 function gallery_shortcode($attr) {
-	global $post;
+	$post = get_post();
 
 	static $instance = 0;
 	$instance++;
@@ -801,6 +689,7 @@ function gallery_shortcode($attr) {
 		'captiontag' => 'dd',
 		'columns'    => 3,
 		'size'       => 'thumbnail',
+		'ids'        => '',
 		'include'    => '',
 		'exclude'    => ''
 	), $attr));
@@ -809,8 +698,13 @@ function gallery_shortcode($attr) {
 	if ( 'RAND' == $order )
 		$orderby = 'none';
 
+	if ( !empty( $ids ) ) {
+		// 'ids' is explicitly ordered
+		$orderby = 'post__in';
+		$include = $ids;
+	}
+
 	if ( !empty($include) ) {
-		$include = preg_replace( '/[^0-9,]+/', '', $include );
 		$_attachments = get_posts( array('include' => $include, 'post_status' => 'inherit', 'post_type' => 'attachment', 'post_mime_type' => 'image', 'order' => $order, 'orderby' => $orderby) );
 
 		$attachments = array();
@@ -818,7 +712,6 @@ function gallery_shortcode($attr) {
 			$attachments[$val->ID] = $_attachments[$key];
 		}
 	} elseif ( !empty($exclude) ) {
-		$exclude = preg_replace( '/[^0-9,]+/', '', $exclude );
 		$attachments = get_children( array('post_parent' => $id, 'exclude' => $exclude, 'post_status' => 'inherit', 'post_type' => 'attachment', 'post_mime_type' => 'image', 'order' => $order, 'orderby' => $orderby) );
 	} else {
 		$attachments = get_children( array('post_parent' => $id, 'post_status' => 'inherit', 'post_type' => 'attachment', 'post_mime_type' => 'image', 'order' => $order, 'orderby' => $orderby) );
@@ -928,9 +821,8 @@ function next_image_link($size = 'thumbnail', $text = false) {
  * @param bool $prev Optional. Default is true to display previous link, false for next.
  */
 function adjacent_image_link($prev = true, $size = 'thumbnail', $text = false) {
-	global $post;
-	$post = get_post($post);
-	$attachments = array_values(get_children( array('post_parent' => $post->post_parent, 'post_status' => 'inherit', 'post_type' => 'attachment', 'post_mime_type' => 'image', 'order' => 'ASC', 'orderby' => 'menu_order ID') ));
+	$post = get_post();
+	$attachments = array_values( get_children( array( 'post_parent' => $post->post_parent, 'post_status' => 'inherit', 'post_type' => 'attachment', 'post_mime_type' => 'image', 'order' => 'ASC', 'orderby' => 'menu_order ID' ) ) );
 
 	foreach ( $attachments as $k => $attachment )
 		if ( $attachment->ID == $post->ID )
@@ -982,6 +874,35 @@ function get_attachment_taxonomies($attachment) {
 }
 
 /**
+ * Return all of the taxonomy names that are registered for attachments.
+ *
+ * Handles mime-type-specific taxonomies such as attachment:image and attachment:video.
+ *
+ * @since 3.5.0
+ * @see get_attachment_taxonomies()
+ * @uses get_taxonomies()
+ *
+ * @param string $output The type of output to return, either taxonomy 'names' or 'objects'. 'names' is the default.
+ * @return array The names of all taxonomy of $object_type.
+ */
+function get_taxonomies_for_attachments( $output = 'names' ) {
+	$taxonomies = array();
+	foreach ( get_taxonomies( array(), 'objects' ) as $taxonomy ) {
+		foreach ( $taxonomy->object_type as $object_type ) {
+			if ( 'attachment' == $object_type || 0 === strpos( $object_type, 'attachment:' ) ) {
+				if ( 'names' == $output )
+					$taxonomies[] = $taxonomy->name;
+				else
+					$taxonomies[ $taxonomy->name ] = $taxonomy;
+				break;
+			}
+		}
+	}
+
+	return $taxonomies;
+}
+
+/**
  * Check if the installed version of GD supports particular image type
  *
  * @since 2.9.0
@@ -1014,6 +935,7 @@ function gd_edit_image_support($mime_type) {
 
 /**
  * Create new GD image resource with transparency support
+ * @TODO: Deprecate if possible.
  *
  * @since 2.9.0
  *
@@ -1029,285 +951,6 @@ function wp_imagecreatetruecolor($width, $height) {
 	}
 	return $img;
 }
-
-/**
- * API for easily embedding rich media such as videos and images into content.
- *
- * @package WordPress
- * @subpackage Embed
- * @since 2.9.0
- */
-class WP_Embed {
-	var $handlers = array();
-	var $post_ID;
-	var $usecache = true;
-	var $linkifunknown = true;
-
-	/**
-	 * Constructor
-	 */
-	function __construct() {
-		// Hack to get the [embed] shortcode to run before wpautop()
-		add_filter( 'the_content', array(&$this, 'run_shortcode'), 8 );
-
-		// Shortcode placeholder for strip_shortcodes()
-		add_shortcode( 'embed', '__return_false' );
-
-		// Attempts to embed all URLs in a post
-		if ( get_option('embed_autourls') )
-			add_filter( 'the_content', array(&$this, 'autoembed'), 8 );
-
-		// After a post is saved, invalidate the oEmbed cache
-		add_action( 'save_post', array(&$this, 'delete_oembed_caches') );
-
-		// After a post is saved, cache oEmbed items via AJAX
-		add_action( 'edit_form_advanced', array(&$this, 'maybe_run_ajax_cache') );
-	}
-
-	/**
-	 * Process the [embed] shortcode.
-	 *
-	 * Since the [embed] shortcode needs to be run earlier than other shortcodes,
-	 * this function removes all existing shortcodes, registers the [embed] shortcode,
-	 * calls {@link do_shortcode()}, and then re-registers the old shortcodes.
-	 *
-	 * @uses $shortcode_tags
-	 * @uses remove_all_shortcodes()
-	 * @uses add_shortcode()
-	 * @uses do_shortcode()
-	 *
-	 * @param string $content Content to parse
-	 * @return string Content with shortcode parsed
-	 */
-	function run_shortcode( $content ) {
-		global $shortcode_tags;
-
-		// Back up current registered shortcodes and clear them all out
-		$orig_shortcode_tags = $shortcode_tags;
-		remove_all_shortcodes();
-
-		add_shortcode( 'embed', array(&$this, 'shortcode') );
-
-		// Do the shortcode (only the [embed] one is registered)
-		$content = do_shortcode( $content );
-
-		// Put the original shortcodes back
-		$shortcode_tags = $orig_shortcode_tags;
-
-		return $content;
-	}
-
-	/**
-	 * If a post/page was saved, then output JavaScript to make
-	 * an AJAX request that will call WP_Embed::cache_oembed().
-	 */
-	function maybe_run_ajax_cache() {
-		global $post_ID;
-
-		if ( empty($post_ID) || empty($_GET['message']) || 1 != $_GET['message'] )
-			return;
-
-?>
-<script type="text/javascript">
-/* <![CDATA[ */
-	jQuery(document).ready(function($){
-		$.get("<?php echo admin_url( 'admin-ajax.php?action=oembed-cache&post=' . $post_ID, 'relative' ); ?>");
-	});
-/* ]]> */
-</script>
-<?php
-	}
-
-	/**
-	 * Register an embed handler. Do not use this function directly, use {@link wp_embed_register_handler()} instead.
-	 * This function should probably also only be used for sites that do not support oEmbed.
-	 *
-	 * @param string $id An internal ID/name for the handler. Needs to be unique.
-	 * @param string $regex The regex that will be used to see if this handler should be used for a URL.
-	 * @param callback $callback The callback function that will be called if the regex is matched.
-	 * @param int $priority Optional. Used to specify the order in which the registered handlers will be tested (default: 10). Lower numbers correspond with earlier testing, and handlers with the same priority are tested in the order in which they were added to the action.
-	 */
-	function register_handler( $id, $regex, $callback, $priority = 10 ) {
-		$this->handlers[$priority][$id] = array(
-			'regex'    => $regex,
-			'callback' => $callback,
-		);
-	}
-
-	/**
-	 * Unregister a previously registered embed handler. Do not use this function directly, use {@link wp_embed_unregister_handler()} instead.
-	 *
-	 * @param string $id The handler ID that should be removed.
-	 * @param int $priority Optional. The priority of the handler to be removed (default: 10).
-	 */
-	function unregister_handler( $id, $priority = 10 ) {
-		if ( isset($this->handlers[$priority][$id]) )
-			unset($this->handlers[$priority][$id]);
-	}
-
-	/**
-	 * The {@link do_shortcode()} callback function.
-	 *
-	 * Attempts to convert a URL into embed HTML. Starts by checking the URL against the regex of the registered embed handlers.
-	 * If none of the regex matches and it's enabled, then the URL will be given to the {@link WP_oEmbed} class.
-	 *
-	 * @uses wp_oembed_get()
-	 * @uses wp_parse_args()
-	 * @uses wp_embed_defaults()
-	 * @uses WP_Embed::maybe_make_link()
-	 * @uses get_option()
-	 * @uses current_user_can()
-	 * @uses wp_cache_get()
-	 * @uses wp_cache_set()
-	 * @uses get_post_meta()
-	 * @uses update_post_meta()
-	 *
-	 * @param array $attr Shortcode attributes.
-	 * @param string $url The URL attempting to be embedded.
-	 * @return string The embed HTML on success, otherwise the original URL.
-	 */
-	function shortcode( $attr, $url = '' ) {
-		global $post;
-
-		if ( empty($url) )
-			return '';
-
-		$rawattr = $attr;
-		$attr = wp_parse_args( $attr, wp_embed_defaults() );
-
-		// kses converts & into &amp; and we need to undo this
-		// See http://core.trac.wordpress.org/ticket/11311
-		$url = str_replace( '&amp;', '&', $url );
-
-		// Look for known internal handlers
-		ksort( $this->handlers );
-		foreach ( $this->handlers as $priority => $handlers ) {
-			foreach ( $handlers as $id => $handler ) {
-				if ( preg_match( $handler['regex'], $url, $matches ) && is_callable( $handler['callback'] ) ) {
-					if ( false !== $return = call_user_func( $handler['callback'], $matches, $attr, $url, $rawattr ) )
-						return apply_filters( 'embed_handler_html', $return, $url, $attr );
-				}
-			}
-		}
-
-		$post_ID = ( !empty($post->ID) ) ? $post->ID : null;
-		if ( !empty($this->post_ID) ) // Potentially set by WP_Embed::cache_oembed()
-			$post_ID = $this->post_ID;
-
-		// Unknown URL format. Let oEmbed have a go.
-		if ( $post_ID ) {
-
-			// Check for a cached result (stored in the post meta)
-			$cachekey = '_oembed_' . md5( $url . serialize( $attr ) );
-			if ( $this->usecache ) {
-				$cache = get_post_meta( $post_ID, $cachekey, true );
-
-				// Failures are cached
-				if ( '{{unknown}}' === $cache )
-					return $this->maybe_make_link( $url );
-
-				if ( !empty($cache) )
-					return apply_filters( 'embed_oembed_html', $cache, $url, $attr, $post_ID );
-			}
-
-			// Use oEmbed to get the HTML
-			$attr['discover'] = ( apply_filters('embed_oembed_discover', false) && author_can( $post_ID, 'unfiltered_html' ) );
-			$html = wp_oembed_get( $url, $attr );
-
-			// Cache the result
-			$cache = ( $html ) ? $html : '{{unknown}}';
-			update_post_meta( $post_ID, $cachekey, $cache );
-
-			// If there was a result, return it
-			if ( $html )
-				return apply_filters( 'embed_oembed_html', $html, $url, $attr, $post_ID );
-		}
-
-		// Still unknown
-		return $this->maybe_make_link( $url );
-	}
-
-	/**
-	 * Delete all oEmbed caches.
-	 *
-	 * @param int $post_ID Post ID to delete the caches for.
-	 */
-	function delete_oembed_caches( $post_ID ) {
-		$post_metas = get_post_custom_keys( $post_ID );
-		if ( empty($post_metas) )
-			return;
-
-		foreach( $post_metas as $post_meta_key ) {
-			if ( '_oembed_' == substr( $post_meta_key, 0, 8 ) )
-				delete_post_meta( $post_ID, $post_meta_key );
-		}
-	}
-
-	/**
-	 * Triggers a caching of all oEmbed results.
-	 *
-	 * @param int $post_ID Post ID to do the caching for.
-	 */
-	function cache_oembed( $post_ID ) {
-		$post = get_post( $post_ID );
-
-		if ( empty($post->ID) || !in_array( $post->post_type, apply_filters( 'embed_cache_oembed_types', array( 'post', 'page' ) ) ) )
-			return;
-
-		// Trigger a caching
-		if ( !empty($post->post_content) ) {
-			$this->post_ID = $post->ID;
-			$this->usecache = false;
-
-			$content = $this->run_shortcode( $post->post_content );
-			if ( get_option('embed_autourls') )
-				$this->autoembed( $content );
-
-			$this->usecache = true;
-		}
-	}
-
-	/**
-	 * Passes any unlinked URLs that are on their own line to {@link WP_Embed::shortcode()} for potential embedding.
-	 *
-	 * @uses WP_Embed::autoembed_callback()
-	 *
-	 * @param string $content The content to be searched.
-	 * @return string Potentially modified $content.
-	 */
-	function autoembed( $content ) {
-		return preg_replace_callback( '|^\s*(https?://[^\s"]+)\s*$|im', array(&$this, 'autoembed_callback'), $content );
-	}
-
-	/**
-	 * Callback function for {@link WP_Embed::autoembed()}.
-	 *
-	 * @uses WP_Embed::shortcode()
-	 *
-	 * @param array $match A regex match array.
-	 * @return string The embed HTML on success, otherwise the original URL.
-	 */
-	function autoembed_callback( $match ) {
-		$oldval = $this->linkifunknown;
-		$this->linkifunknown = false;
-		$return = $this->shortcode( array(), $match[1] );
-		$this->linkifunknown = $oldval;
-
-		return "\n$return\n";
-	}
-
-	/**
-	 * Conditionally makes a hyperlink based on an internal class variable.
-	 *
-	 * @param string $url URL to potentially be linked.
-	 * @return string Linked URL or the original URL.
-	 */
-	function maybe_make_link( $url ) {
-		$output = ( $this->linkifunknown ) ? '<a href="' . esc_attr($url) . '">' . esc_html($url) . '</a>' : $url;
-		return apply_filters( 'embed_maybe_make_link', $output, $url );
-	}
-}
-$GLOBALS['wp_embed'] = new WP_Embed();
 
 /**
  * Register an embed handler. This function should probably only be used for sites that do not support oEmbed.
@@ -1334,31 +977,27 @@ function wp_embed_unregister_handler( $id, $priority = 10 ) {
 /**
  * Create default array of embed parameters.
  *
+ * The width defaults to the content width as specified by the theme. If the
+ * theme does not specify a content width, then 500px is used.
+ *
+ * The default height is 1.5 times the width, or 1000px, whichever is smaller.
+ *
+ * The 'embed_defaults' filter can be used to adjust either of these values.
+ *
  * @since 2.9.0
  *
  * @return array Default embed parameters.
  */
 function wp_embed_defaults() {
-	if ( !empty($GLOBALS['content_width']) )
-		$theme_width = (int) $GLOBALS['content_width'];
+	if ( ! empty( $GLOBALS['content_width'] ) )
+		$width = (int) $GLOBALS['content_width'];
 
-	$width = get_option('embed_size_w');
-
-	if ( empty($width) && !empty($theme_width) )
-		$width = $theme_width;
-
-	if ( empty($width) )
+	if ( empty( $width ) )
 		$width = 500;
 
-	$height = get_option('embed_size_h');
+	$height = min( ceil( $width * 1.5 ), 1000 );
 
-	if ( empty($height) )
-		$height = 700;
-
-	return apply_filters( 'embed_defaults', array(
-		'width'  => $width,
-		'height' => $height,
-	) );
+	return apply_filters( 'embed_defaults', compact( 'width', 'height' ) );
 }
 
 /**
@@ -1420,6 +1059,29 @@ function wp_oembed_add_provider( $format, $provider, $regex = false ) {
 }
 
 /**
+ * Removes an oEmbed provider.
+ *
+ * @since 3.5
+ * @see WP_oEmbed
+ *
+ * @uses _wp_oembed_get_object()
+ *
+ * @param string $format The URL format for the oEmbed provider to remove.
+ */
+function wp_oembed_remove_provider( $format ) {
+	require_once( ABSPATH . WPINC . '/class-oembed.php' );
+
+	$oembed = _wp_oembed_get_object();
+
+	if ( isset( $oembed->providers[ $format ] ) ) {
+		unset( $oembed->providers[ $format ] );
+		return true;
+	}
+
+	return false;
+}
+
+/**
  * Determines if default embed handlers should be loaded.
  *
  * Checks to make sure that the embeds library hasn't already been loaded. If
@@ -1455,6 +1117,56 @@ function wp_embed_handler_googlevideo( $matches, $attr, $url, $rawattr ) {
 	}
 
 	return apply_filters( 'embed_googlevideo', '<embed type="application/x-shockwave-flash" src="http://video.google.com/googleplayer.swf?docid=' . esc_attr($matches[2]) . '&amp;hl=en&amp;fs=true" style="width:' . esc_attr($width) . 'px;height:' . esc_attr($height) . 'px" allowFullScreen="true" allowScriptAccess="always" />', $matches, $attr, $url, $rawattr );
+}
+
+/**
+ * {@internal Missing Short Description}}
+ *
+ * @since 2.3.0
+ *
+ * @param unknown_type $size
+ * @return unknown
+ */
+function wp_convert_hr_to_bytes( $size ) {
+	$size  = strtolower( $size );
+	$bytes = (int) $size;
+	if ( strpos( $size, 'k' ) !== false )
+		$bytes = intval( $size ) * 1024;
+	elseif ( strpos( $size, 'm' ) !== false )
+		$bytes = intval($size) * 1024 * 1024;
+	elseif ( strpos( $size, 'g' ) !== false )
+		$bytes = intval( $size ) * 1024 * 1024 * 1024;
+	return $bytes;
+}
+
+/**
+ * {@internal Missing Short Description}}
+ *
+ * @since 2.3.0
+ *
+ * @param unknown_type $bytes
+ * @return unknown
+ */
+function wp_convert_bytes_to_hr( $bytes ) {
+	$units = array( 0 => 'B', 1 => 'kB', 2 => 'MB', 3 => 'GB' );
+	$log   = log( $bytes, 1024 );
+	$power = (int) $log;
+	$size  = pow( 1024, $log - $power );
+	return $size . $units[$power];
+}
+
+/**
+ * {@internal Missing Short Description}}
+ *
+ * @since 2.5.0
+ *
+ * @return unknown
+ */
+function wp_max_upload_size() {
+	$u_bytes = wp_convert_hr_to_bytes( ini_get( 'upload_max_filesize' ) );
+	$p_bytes = wp_convert_hr_to_bytes( ini_get( 'post_max_size' ) );
+	$bytes   = apply_filters( 'upload_size_limit', min( $u_bytes, $p_bytes ), $u_bytes, $p_bytes );
+	return $bytes;
 }
 
 /**
@@ -1507,3 +1219,164 @@ function wp_plupload_default_settings() {
 	$wp_scripts->add_data( 'wp-plupload', 'data', $script );
 }
 add_action( 'customize_controls_enqueue_scripts', 'wp_plupload_default_settings' );
+
+/**
+ * Prepares an attachment post object for JS, where it is expected
+ * to be JSON-encoded and fit into an Attachment model.
+ *
+ * @since 3.5.0
+ *
+ * @param mixed $attachment Attachment ID or object.
+ * @return array Array of attachment details.
+ */
+function wp_prepare_attachment_for_js( $attachment ) {
+	if ( ! $attachment = get_post( $attachment ) )
+	   return;
+
+	if ( 'attachment' != $attachment->post_type )
+	   return;
+
+	$meta = wp_get_attachment_metadata( $attachment->ID );
+	list( $type, $subtype ) = explode( '/', $attachment->post_mime_type );
+
+	$attachment_url = wp_get_attachment_url( $attachment->ID );
+
+	$response = array(
+		'id'          => $attachment->ID,
+		'title'       => $attachment->post_title,
+		'filename'    => basename( $attachment->guid ),
+		'url'         => $attachment_url,
+		'alt'         => get_post_meta( $attachment->ID, '_wp_attachment_image_alt', true ),
+		'author'      => $attachment->post_author,
+		'description' => $attachment->post_content,
+		'caption'     => $attachment->post_excerpt,
+		'name'        => $attachment->post_name,
+		'status'      => $attachment->post_status,
+		'uploadedTo'  => $attachment->post_parent,
+		'date'        => strtotime( $attachment->post_date_gmt ) * 1000,
+		'modified'    => strtotime( $attachment->post_modified_gmt ) * 1000,
+		'mime'        => $attachment->post_mime_type,
+		'type'        => $type,
+		'subtype'     => $subtype,
+		'icon'        => wp_mime_type_icon( $attachment->ID ),
+	);
+
+	if ( $meta && 'image' === $type ) {
+		$sizes = array();
+		$base_url = str_replace( wp_basename( $attachment_url ), '', $attachment_url );
+
+		if ( isset( $meta['sizes'] ) ) {
+			foreach ( $meta['sizes'] as $slug => $size ) {
+				$sizes[ $slug ] = array(
+					'height'      => $size['height'],
+					'width'       => $size['width'],
+					'url'         => $base_url . $size['file'],
+					'orientation' => $size['height'] > $size['width'] ? 'portrait' : 'landscape',
+				);
+			}
+		}
+
+		$response = array_merge( $response, array(
+			'height'      => $meta['height'],
+			'width'       => $meta['width'],
+			'sizes'       => $sizes,
+			'orientation' => $meta['height'] > $meta['width'] ? 'portrait' : 'landscape',
+		) );
+	}
+
+	return apply_filters( 'wp_prepare_attachment_for_js', $response, $attachment, $meta );
+}
+
+/**
+ * Prints the templates used in the media manager.
+ *
+ * @since 3.5.0
+ */
+function wp_print_media_templates( $attachment ) {
+	?>
+	<script type="text/html" id="tmpl-media-modal">
+		<div class="media-modal">
+			<div class="media-modal-header">
+				<h3><%- title %></h3>
+				<a class="media-modal-close" href="" title="<?php esc_attr_e('Close'); ?>"><?php echo 'Close'; ?></a>
+			</div>
+			<div class="media-modal-content"></div>
+		</div>
+		<div class="media-modal-backdrop"></div>
+	</script>
+
+	<script type="text/html" id="tmpl-media-workspace">
+		<div class="upload-attachments">
+			<% if ( selectOne ) { %>
+				<h3><?php _e( 'Drop a file here' ); ?></h3>
+				<span><?php _ex( 'or', 'Uploader: Drop a file here - or - Select a File' ); ?></span>
+				<a href="#" class="button-secondary"><?php _e( 'Select a File' ); ?></a>
+			<% } else { %>
+				<h3><?php _e( 'Drop files here' ); ?></h3>
+				<span><?php _ex( 'or', 'Uploader: Drop files here - or - Select Files' ); ?></span>
+				<a href="#" class="button-secondary"><?php _e( 'Select Files' ); ?></a>
+			<% } %>
+
+			<div class="media-progress-bar"><div></div></div>
+		</div>
+	</script>
+
+	<script type="text/html" id="tmpl-attachments">
+		<div class="attachments-header">
+			<h3><%- directions %></h3>
+			<input class="search" type="text" placeholder="<?php esc_attr_e('Search'); ?>" />
+		</div>
+	</script>
+
+	<script type="text/html" id="tmpl-attachment">
+		<div class="attachment-preview type-<%- type %> subtype-<%- subtype %> <%- orientation %>">
+			<% if ( thumbnail ) { %>
+				<img src="<%- thumbnail %>" draggable="false" />
+			<% } %>
+
+			<% if ( uploading ) { %>
+				<div class="media-progress-bar"><div></div></div>
+			<% } %>
+
+			<% if ( buttons.close ) { %>
+				<a class="close" href="#">&times;</a>
+			<% } %>
+
+			<% if ( buttons.insert ) { %>
+				<a class="insert button button-primary button-small" href="#"><?php _e( 'Insert' ); ?></a>
+			<% } %>
+		</div>
+		<div class="describe"></div>
+	</script>
+
+	<script type="text/html" id="tmpl-media-selection-preview">
+		<div class="selected-img selected-count-<%- count %>">
+			<% if ( thumbnail ) { %>
+				<img src="<%- thumbnail %>" draggable="false" />
+			<% } %>
+
+			<span class="count"><%- count %></span>
+		</div>
+		<a class="clear-selection" href="#"><?php _e('Clear selection'); ?></a>
+	</script>
+
+	<script type="text/html" id="tmpl-editor-attachment">
+		<% if ( url ) { %>
+			<img src="<%- url %>" width="<%- width %>" height="<%- height %>" draggable="false" />
+		<% } %>
+
+		<% if ( uploading ) { %>
+			<div class="media-progress-bar"><div></div></div>
+		<% } %>
+		<div class="close">&times;</div>
+		<div class="describe"></div>
+	</script>
+
+	<script type="text/html" id="tmpl-editor-gallery">
+		<% if ( url ) { %>
+			<img src="<%- url %>" draggable="false" />
+		<% } %>
+		<div class="close">&times;</div>
+	</script>
+	<?php
+}
