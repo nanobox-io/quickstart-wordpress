@@ -131,7 +131,7 @@ function twentyeleven_setup() {
 		// Callback used to display the header preview in the admin.
 		'admin-preview-callback' => 'twentyeleven_admin_header_image',
 	);
-	
+
 	add_theme_support( 'custom-header', $custom_header_support );
 
 	if ( ! function_exists( 'get_custom_header' ) ) {
@@ -221,7 +221,7 @@ function twentyeleven_header_style() {
 	// If no custom options for text are set, let's bail.
 	if ( $text_color == HEADER_TEXTCOLOR )
 		return;
-		
+
 	// If we get this far, we have custom styles. Let's do this.
 	?>
 	<style type="text/css">
@@ -337,12 +337,14 @@ function twentyeleven_excerpt_length( $length ) {
 }
 add_filter( 'excerpt_length', 'twentyeleven_excerpt_length' );
 
+if ( ! function_exists( 'twentyeleven_continue_reading_link' ) ) :
 /**
  * Returns a "Continue Reading" link for excerpts
  */
 function twentyeleven_continue_reading_link() {
 	return ' <a href="'. esc_url( get_permalink() ) . '">' . __( 'Continue reading <span class="meta-nav">&rarr;</span>', 'twentyeleven' ) . '</a>';
 }
+endif; // twentyeleven_continue_reading_link
 
 /**
  * Replaces "[...]" (appended to automatically generated excerpts) with an ellipsis and twentyeleven_continue_reading_link().

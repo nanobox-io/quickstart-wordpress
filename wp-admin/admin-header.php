@@ -76,6 +76,9 @@ do_action('admin_head');
 if ( get_user_setting('mfold') == 'f' )
 	$admin_body_class .= ' folded';
 
+if ( !get_user_setting('unfold') )
+	$admin_body_class .= ' auto-fold';
+
 if ( is_admin_bar_showing() )
 	$admin_body_class .= ' admin-bar';
 
@@ -107,6 +110,7 @@ if ( wp_script_is( 'customize-loader', 'queue' ) && current_user_can( 'edit_them
 ?>
 
 <div id="wpwrap">
+<a tabindex="1" href="#wpbody-content" class="screen-reader-text screen-reader-shortcut"><?php _e('Skip to main content'); ?></a>
 <?php require(ABSPATH . 'wp-admin/menu-header.php'); ?>
 <div id="wpcontent">
 
@@ -122,7 +126,7 @@ $current_screen->set_parentage( $parent_file );
 
 ?>
 
-<div id="wpbody-content">
+<div id="wpbody-content" aria-label="<?php esc_attr_e('Main content'); ?>">
 <?php
 
 $current_screen->render_screen_meta();

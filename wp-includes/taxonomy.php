@@ -47,6 +47,7 @@ function create_initial_taxonomies() {
 		'rewrite' => $rewrite['category'],
 		'public' => true,
 		'show_ui' => true,
+		'show_admin_column' => true,
 		'_builtin' => true,
 	) );
 
@@ -56,6 +57,7 @@ function create_initial_taxonomies() {
 		'rewrite' => $rewrite['post_tag'],
 		'public' => true,
 		'show_ui' => true,
+		'show_admin_column' => true,
 		'_builtin' => true,
 	) );
 
@@ -88,6 +90,12 @@ function create_initial_taxonomies() {
 			'separate_items_with_commas' => null,
 			'add_or_remove_items' => null,
 			'choose_from_most_used' => null,
+		),
+		'capabilities' => array(
+			'manage_terms' => 'manage_links',
+			'edit_terms'   => 'manage_links',
+			'delete_terms' => 'manage_links',
+			'assign_terms' => 'manage_links',
 		),
 		'query_var' => false,
 		'rewrite' => false,
@@ -325,7 +333,8 @@ function register_taxonomy( $taxonomy, $object_type, $args = array() ) {
 	if ( false !== $args['query_var'] && !empty($wp) ) {
 		if ( true === $args['query_var'] )
 			$args['query_var'] = $taxonomy;
-		$args['query_var'] = sanitize_title_with_dashes($args['query_var']);
+		else
+			$args['query_var'] = sanitize_title_with_dashes($args['query_var']);
 		$wp->add_query_var($args['query_var']);
 	}
 
@@ -651,23 +660,26 @@ class WP_Tax_Query {
 		$join = '';
 		$where = array();
 		$i = 0;
+		$count = count( $this->queries );
 
-		foreach ( $this->queries as $query ) {
+		foreach ( $this->queries as $index => $query ) {
 			$this->clean_query( $query );
 
-			if ( is_wp_error( $query ) ) {
+			if ( is_wp_error( $query ) )
 				return self::$no_results;
-			}
 
 			extract( $query );
 
 			if ( 'IN' == $operator ) {
 
 				if ( empty( $terms ) ) {
-					if ( 'OR' == $this->relation )
+					if ( 'OR' == $this->relation ) {
+						if ( ( $index + 1 === $count ) && empty( $where ) )
+							return self::$no_results;
 						continue;
-					else
+					} else {
 						return self::$no_results;
+					}
 				}
 
 				$terms = implode( ',', $terms );
@@ -711,7 +723,7 @@ class WP_Tax_Query {
 			$i++;
 		}
 
-		if ( !empty( $where ) )
+		if ( ! empty( $where ) )
 			$where = ' AND ( ' . implode( " $this->relation ", $where ) . ' )';
 		else
 			$where = '';
@@ -756,12 +768,11 @@ class WP_Tax_Query {
 	 * Transforms a single query, from one field to another.
 	 *
 	 * @since 3.2.0
-	 * @access private
 	 *
 	 * @param array &$query The single query
 	 * @param string $resulting_field The resulting field
 	 */
-	private function transform_query( &$query, $resulting_field ) {
+	public function transform_query( &$query, $resulting_field ) {
 		global $wpdb;
 
 		if ( empty( $query['terms'] ) )
@@ -784,7 +795,14 @@ class WP_Tax_Query {
 					AND $wpdb->terms.{$query['field']} IN ($terms)
 				" );
 				break;
-
+			case 'term_taxonomy_id':
+				$terms = implode( ',', array_map( 'intval', $query['terms'] ) );
+				$terms = $wpdb->get_col( "
+					SELECT $resulting_field
+					FROM $wpdb->term_taxonomy
+					WHERE term_taxonomy_id IN ($terms)
+				" );
+				break;
 			default:
 				$terms = implode( ',', array_map( 'intval', $query['terms'] ) );
 				$terms = $wpdb->get_col( "
@@ -845,7 +863,7 @@ class WP_Tax_Query {
  * @return mixed|null|WP_Error Term Row from database. Will return null if $term is empty. If taxonomy does not
  * exist then WP_Error will be returned.
  */
-function &get_term($term, $taxonomy, $output = OBJECT, $filter = 'raw') {
+function get_term($term, $taxonomy, $output = OBJECT, $filter = 'raw') {
 	global $wpdb;
 	$null = null;
 
@@ -1162,7 +1180,7 @@ function get_term_to_edit( $id, $taxonomy ) {
  * @param string|array $args The values of what to search for when returning terms
  * @return array|WP_Error List of Term Objects and their children. Will return WP_Error, if any of $taxonomies do not exist.
  */
-function &get_terms($taxonomies, $args = '') {
+function get_terms($taxonomies, $args = '') {
 	global $wpdb;
 	$empty_array = array();
 
@@ -1384,7 +1402,7 @@ function &get_terms($taxonomies, $args = '') {
 	}
 
 	if ( empty($terms) ) {
-		wp_cache_add( $cache_key, array(), 'terms', 86400 ); // one day
+		wp_cache_add( $cache_key, array(), 'terms', DAY_IN_SECONDS );
 		$terms = apply_filters('get_terms', array(), $taxonomies, $args);
 		return $terms;
 	}
@@ -1392,7 +1410,7 @@ function &get_terms($taxonomies, $args = '') {
 	if ( $child_of ) {
 		$children = _get_term_hierarchy($taxonomies[0]);
 		if ( ! empty($children) )
-			$terms = & _get_term_children($child_of, $terms, $taxonomies[0]);
+			$terms = _get_term_children($child_of, $terms, $taxonomies[0]);
 	}
 
 	// Update term counts to include children.
@@ -1435,7 +1453,7 @@ function &get_terms($taxonomies, $args = '') {
 		$terms = array_slice($terms, $offset, $number);
 	}
 
-	wp_cache_add( $cache_key, $terms, 'terms', 86400 ); // one day
+	wp_cache_add( $cache_key, $terms, 'terms', DAY_IN_SECONDS );
 
 	$terms = apply_filters('get_terms', $terms, $taxonomies, $args);
 	return $terms;
@@ -1665,7 +1683,7 @@ function sanitize_term_field($field, $value, $term_id, $taxonomy, $context) {
  *
  * @param string $taxonomy Taxonomy name
  * @param array|string $args Overwrite defaults. See get_terms()
- * @return int How many terms are in $taxonomy
+ * @return int|WP_Error How many terms are in $taxonomy. WP_Error if $taxonomy does not exist.
  */
 function wp_count_terms( $taxonomy, $args = array() ) {
 	$defaults = array('hide_empty' => false);
@@ -1802,6 +1820,9 @@ function wp_delete_term( $term, $taxonomy, $args = array() ) {
 	foreach ( $tax_object->object_type as $object_type )
 		clean_object_term_cache( $objects, $object_type );
 
+	// Get the object before deletion so we can pass to actions below
+	$deleted_term = get_term( $term, $taxonomy );
+
 	do_action( 'delete_term_taxonomy', $tt_id );
 	$wpdb->delete( $wpdb->term_taxonomy, array( 'term_taxonomy_id' => $tt_id ) );
 	do_action( 'deleted_term_taxonomy', $tt_id );
@@ -1812,8 +1833,8 @@ function wp_delete_term( $term, $taxonomy, $args = array() ) {
 
 	clean_term_cache($term, $taxonomy);
 
-	do_action('delete_term', $term, $tt_id, $taxonomy);
-	do_action("delete_$taxonomy", $term, $tt_id);
+	do_action( 'delete_term', $term, $tt_id, $taxonomy, $deleted_term );
+	do_action( "delete_$taxonomy", $term, $tt_id, $deleted_term );
 
 	return true;
 }
@@ -1925,6 +1946,10 @@ function wp_get_object_terms($object_ids, $taxonomies, $args = array()) {
 
 	if ( !empty($orderby) )
 		$orderby = "ORDER BY $orderby";
+
+	$order = strtoupper( $order );
+	if ( '' !== $order && ! in_array( $order, array( 'ASC', 'DESC' ) ) )
+		$order = 'ASC';
 
 	$taxonomies = "'" . implode("', '", $taxonomies) . "'";
 	$object_ids = implode(', ', $object_ids);
@@ -2207,7 +2232,8 @@ function wp_set_object_terms($object_id, $terms, $taxonomy, $append = false) {
 			if ( in_array($tt_id, $final_tt_ids) )
 				$values[] = $wpdb->prepare( "(%d, %d, %d)", $object_id, $tt_id, ++$term_order);
 		if ( $values )
-			$wpdb->query("INSERT INTO $wpdb->term_relationships (object_id, term_taxonomy_id, term_order) VALUES " . join(',', $values) . " ON DUPLICATE KEY UPDATE term_order = VALUES(term_order)");
+			if ( false === $wpdb->query( "INSERT INTO $wpdb->term_relationships (object_id, term_taxonomy_id, term_order) VALUES " . join( ',', $values ) . " ON DUPLICATE KEY UPDATE term_order = VALUES(term_order)" ) )
+				return new WP_Error( 'db_insert_error', __( 'Could not insert term relationship into the database' ), $wpdb->last_error );
 	}
 
 	do_action('set_object_terms', $object_id, $terms, $tt_ids, $taxonomy, $append, $old_tt_ids);
@@ -2536,8 +2562,10 @@ function clean_object_term_cache($object_ids, $object_type) {
 	if ( !is_array($object_ids) )
 		$object_ids = array($object_ids);
 
+	$taxonomies = get_object_taxonomies( $object_type );
+
 	foreach ( $object_ids as $id )
-		foreach ( get_object_taxonomies($object_type) as $taxonomy )
+		foreach ( $taxonomies as $taxonomy )
 			wp_cache_delete($id, "{$taxonomy}_relationships");
 
 	do_action('clean_object_term_cache', $object_ids, $object_type);
@@ -2616,7 +2644,7 @@ function clean_term_cache($ids, $taxonomy = '', $clean_taxonomy = true) {
  * @param string $taxonomy Taxonomy Name
  * @return bool|array Empty array if $terms found, but not $taxonomy. False if nothing is in cache for $taxonomy and $id.
  */
-function &get_object_term_cache($id, $taxonomy) {
+function get_object_term_cache($id, $taxonomy) {
 	$cache = wp_cache_get($id, "{$taxonomy}_relationships");
 	return $cache;
 }
@@ -2762,7 +2790,7 @@ function _get_term_hierarchy($taxonomy) {
  * @param string $taxonomy The taxonomy which determines the hierarchy of the terms.
  * @return array The subset of $terms that are descendants of $term_id.
  */
-function &_get_term_children($term_id, $terms, $taxonomy) {
+function _get_term_children($term_id, $terms, $taxonomy) {
 	$empty_array = array();
 	if ( empty($terms) )
 		return $empty_array;
@@ -2960,9 +2988,9 @@ function get_term_link( $term, $taxonomy = '') {
 
 	if ( !is_object($term) ) {
 		if ( is_int($term) ) {
-			$term = &get_term($term, $taxonomy);
+			$term = get_term($term, $taxonomy);
 		} else {
-			$term = &get_term_by('slug', $term, $taxonomy);
+			$term = get_term_by('slug', $term, $taxonomy);
 		}
 	}
 
@@ -3059,10 +3087,7 @@ function the_taxonomies($args = array()) {
  * @return array
  */
 function get_the_taxonomies($post = 0, $args = array() ) {
-	if ( is_int($post) )
-		$post =& get_post($post);
-	elseif ( !is_object($post) )
-		$post =& $GLOBALS['post'];
+	$post = get_post( $post );
 
 	$args = wp_parse_args( $args, array(
 		'template' => '%s: %l.',
@@ -3108,7 +3133,7 @@ function get_the_taxonomies($post = 0, $args = array() ) {
  * @return array
  */
 function get_post_taxonomies($post = 0) {
-	$post =& get_post($post);
+	$post = get_post( $post );
 
 	return get_object_taxonomies($post);
 }
@@ -3207,16 +3232,8 @@ function get_ancestors($object_id = 0, $object_type = '') {
 			$ancestors[] = (int) $term->parent;
 			$term = get_term($term->parent, $object_type);
 		}
-	} elseif ( null !== get_post_type_object( $object_type ) ) {
-		$object = get_post($object_id);
-		if ( ! is_wp_error( $object ) && isset( $object->ancestors ) && is_array( $object->ancestors ) )
-			$ancestors = $object->ancestors;
-		else {
-			while ( ! is_wp_error($object) && ! empty( $object->post_parent ) && ! in_array( $object->post_parent, $ancestors ) ) {
-				$ancestors[] = (int) $object->post_parent;
-				$object = get_post($object->post_parent);
-			}
-		}
+	} elseif ( post_type_exists( $object_type ) ) {
+		$ancestors = get_post_ancestors($object_id);
 	}
 
 	return apply_filters('get_ancestors', $ancestors, $object_id, $object_type);

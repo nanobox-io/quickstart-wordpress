@@ -9,14 +9,7 @@
 /** WordPress Administration Bootstrap */
 require_once('./admin.php');
 
-if ( is_multisite() ) {
-	$menu_perms = get_site_option( 'menu_items', array() );
-
-	if ( empty( $menu_perms['plugins'] ) && ! current_user_can( 'manage_network_plugins' ) )
-		wp_die( __( 'Cheatin&#8217; uh?' ) );
-}
-
-if ( !current_user_can('activate_plugins') )
+if ( ! current_user_can('activate_plugins') )
 	wp_die( __( 'You do not have sufficient permissions to manage plugins for this site.' ) );
 
 $wp_list_table = _get_list_table('WP_Plugins_List_Table');
@@ -51,6 +44,11 @@ if ( $action ) {
 			}
 
 			if ( ! is_network_admin() ) {
+				if ( is_network_only_plugin( $plugin ) ) {
+					wp_redirect( self_admin_url("plugins.php?plugin_status=$status&paged=$page&s=$s") );
+					exit;
+				}
+
 				$recent = (array) get_option( 'recently_activated' );
 				unset( $recent[ $plugin ] );
 				update_option( 'recently_activated', $recent );
@@ -72,10 +70,17 @@ if ( $action ) {
 			$plugins = isset( $_POST['checked'] ) ? (array) $_POST['checked'] : array();
 
 			// Only activate plugins which are not already active.
-			$check = is_network_admin() ? 'is_plugin_active_for_network' : 'is_plugin_active';
-			foreach ( $plugins as $i => $plugin )
-				if ( $check( $plugin ) )
-					unset( $plugins[ $i ] );
+			if ( is_network_admin() ) {
+				foreach ( $plugins as $i => $plugin ) {
+					if ( is_plugin_active_for_network( $plugin ) )
+						unset( $plugins[ $i ] );
+				}
+			} else {
+				foreach ( $plugins as $i => $plugin ) {
+					if ( is_plugin_active( $plugin ) || is_network_only_plugin( $plugin ) )
+						unset( $plugins[ $i ] );
+				}
+			}
 
 			if ( empty($plugins) ) {
 				wp_redirect( self_admin_url("plugins.php?plugin_status=$status&paged=$page&s=$s") );

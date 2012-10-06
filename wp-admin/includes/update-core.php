@@ -395,6 +395,146 @@ $_old_files = array(
 'wp-includes/js/tinymce/plugins/wplink/editor_plugin.dev.js',
 // Don't delete, yet: 'wp-pass.php',
 // Don't delete, yet: 'wp-register.php',
+// 3.5
+'wp-admin/gears-manifest.php',
+'wp-admin/includes/manifest.php',
+'wp-admin/images/archive-link.png',
+'wp-admin/images/blue-grad.png',
+'wp-admin/images/button-grad-active.png',
+'wp-admin/images/button-grad.png',
+'wp-admin/images/ed-bg-vs.gif',
+'wp-admin/images/ed-bg.gif',
+'wp-admin/images/fade-butt.png',
+'wp-admin/images/fav-arrow-rtl.gif',
+'wp-admin/images/fav-arrow.gif',
+'wp-admin/images/fav-vs.png',
+'wp-admin/images/fav.png',
+'wp-admin/images/gray-grad.png',
+'wp-admin/images/loading-publish.gif',
+'wp-admin/images/logo-ghost.png',
+'wp-admin/images/logo.gif',
+'wp-admin/images/menu-arrow-frame-rtl.png',
+'wp-admin/images/menu-arrow-frame.png',
+'wp-admin/images/menu-arrows.gif',
+'wp-admin/images/menu-bits-rtl-vs.gif',
+'wp-admin/images/menu-bits-rtl.gif',
+'wp-admin/images/menu-bits-vs.gif',
+'wp-admin/images/menu-bits.gif',
+'wp-admin/images/menu-dark-rtl-vs.gif',
+'wp-admin/images/menu-dark-rtl.gif',
+'wp-admin/images/menu-dark-vs.gif',
+'wp-admin/images/menu-dark.gif',
+'wp-admin/images/required.gif',
+'wp-admin/images/screen-options-toggle-vs.gif',
+'wp-admin/images/screen-options-toggle.gif',
+'wp-admin/images/toggle-arrow-rtl.gif',
+'wp-admin/images/toggle-arrow.gif',
+'wp-admin/images/upload-classic.png',
+'wp-admin/images/upload-fresh.png',
+'wp-admin/images/white-grad-active.png',
+'wp-admin/images/white-grad.png',
+'wp-admin/images/widgets-arrow-vs.gif',
+'wp-admin/images/widgets-arrow.gif',
+'wp-admin/images/wpspin_dark.gif',
+'wp-includes/images/upload.png',
+'wp-includes/js/prototype.js',
+'wp-includes/js/scriptaculous',
+'wp-admin/css/wp-admin-rtl.dev.css',
+'wp-admin/css/wp-admin.dev.css',
+'wp-admin/css/media-rtl.dev.css',
+'wp-admin/css/media.dev.css',
+'wp-admin/css/colors-classic.dev.css',
+'wp-admin/css/customize-controls-rtl.dev.css',
+'wp-admin/css/customize-controls.dev.css',
+'wp-admin/css/ie-rtl.dev.css',
+'wp-admin/css/ie.dev.css',
+'wp-admin/css/install.dev.css',
+'wp-admin/css/colors-fresh.dev.css',
+'wp-includes/js/customize-base.dev.js',
+'wp-includes/js/json2.dev.js',
+'wp-includes/js/comment-reply.dev.js',
+'wp-includes/js/customize-preview.dev.js',
+'wp-includes/js/wplink.dev.js',
+'wp-includes/js/tw-sack.dev.js',
+'wp-includes/js/wp-list-revisions.dev.js',
+'wp-includes/js/autosave.dev.js',
+'wp-includes/js/admin-bar.dev.js',
+'wp-includes/js/quicktags.dev.js',
+'wp-includes/js/wp-ajax-response.dev.js',
+'wp-includes/js/wp-pointer.dev.js',
+'wp-includes/js/hoverIntent.dev.js',
+'wp-includes/js/colorpicker.dev.js',
+'wp-includes/js/wp-lists.dev.js',
+'wp-includes/js/customize-loader.dev.js',
+'wp-includes/js/jquery/jquery.table-hotkeys.dev.js',
+'wp-includes/js/jquery/jquery.color.dev.js',
+'wp-includes/js/jquery/jquery.color.js',
+'wp-includes/js/jquery/jquery.hotkeys.dev.js',
+'wp-includes/js/jquery/jquery.form.dev.js',
+'wp-includes/js/jquery/suggest.dev.js',
+'wp-admin/js/xfn.dev.js',
+'wp-admin/js/set-post-thumbnail.dev.js',
+'wp-admin/js/comment.dev.js',
+'wp-admin/js/theme.dev.js',
+'wp-admin/js/cat.dev.js',
+'wp-admin/js/password-strength-meter.dev.js',
+'wp-admin/js/user-profile.dev.js',
+'wp-admin/js/theme-preview.dev.js',
+'wp-admin/js/post.dev.js',
+'wp-admin/js/media-upload.dev.js',
+'wp-admin/js/word-count.dev.js',
+'wp-admin/js/plugin-install.dev.js',
+'wp-admin/js/edit-comments.dev.js',
+'wp-admin/js/media-gallery.dev.js',
+'wp-admin/js/custom-fields.dev.js',
+'wp-admin/js/custom-background.dev.js',
+'wp-admin/js/common.dev.js',
+'wp-admin/js/inline-edit-tax.dev.js',
+'wp-admin/js/gallery.dev.js',
+'wp-admin/js/utils.dev.js',
+'wp-admin/js/widgets.dev.js',
+'wp-admin/js/wp-fullscreen.dev.js',
+'wp-admin/js/nav-menu.dev.js',
+'wp-admin/js/dashboard.dev.js',
+'wp-admin/js/link.dev.js',
+'wp-admin/js/user-suggest.dev.js',
+'wp-admin/js/postbox.dev.js',
+'wp-admin/js/tags.dev.js',
+'wp-admin/js/image-edit.dev.js',
+'wp-admin/js/media.dev.js',
+'wp-admin/js/customize-controls.dev.js',
+'wp-admin/js/inline-edit-post.dev.js',
+'wp-admin/js/categories.dev.js',
+'wp-admin/js/editor.dev.js',
+'wp-includes/js/tinymce/plugins/wpeditimage/js/editimage.dev.js',
+'wp-includes/js/tinymce/plugins/wpdialogs/js/popup.dev.js',
+'wp-includes/js/tinymce/plugins/wpdialogs/js/wpdialog.dev.js',
+'wp-includes/js/plupload/handlers.dev.js',
+'wp-includes/js/plupload/wp-plupload.dev.js',
+'wp-includes/js/swfupload/handlers.dev.js',
+'wp-includes/js/jcrop/jquery.Jcrop.dev.js',
+'wp-includes/js/jcrop/jquery.Jcrop.js',
+'wp-includes/js/jcrop/jquery.Jcrop.css',
+'wp-includes/js/imgareaselect/jquery.imgareaselect.dev.js',
+'wp-includes/css/wp-pointer.dev.css',
+'wp-includes/css/editor.dev.css',
+'wp-includes/css/jquery-ui-dialog.dev.css',
+'wp-includes/css/admin-bar-rtl.dev.css',
+'wp-includes/css/admin-bar.dev.css',
+'wp-includes/js/jquery/ui/jquery.effects.clip.min.js',
+'wp-includes/js/jquery/ui/jquery.effects.scale.min.js',
+'wp-includes/js/jquery/ui/jquery.effects.blind.min.js',
+'wp-includes/js/jquery/ui/jquery.effects.core.min.js',
+'wp-includes/js/jquery/ui/jquery.effects.shake.min.js',
+'wp-includes/js/jquery/ui/jquery.effects.fade.min.js',
+'wp-includes/js/jquery/ui/jquery.effects.explode.min.js',
+'wp-includes/js/jquery/ui/jquery.effects.slide.min.js',
+'wp-includes/js/jquery/ui/jquery.effects.drop.min.js',
+'wp-includes/js/jquery/ui/jquery.effects.highlight.min.js',
+'wp-includes/js/jquery/ui/jquery.effects.bounce.min.js',
+'wp-includes/js/jquery/ui/jquery.effects.pulsate.min.js',
+'wp-includes/js/jquery/ui/jquery.effects.transfer.min.js',
+'wp-includes/js/jquery/ui/jquery.effects.fold.min.js',
 );
 
 /**
@@ -419,7 +559,8 @@ global $_new_bundled_files;
 $_new_bundled_files = array(
 'plugins/akismet/' => '2.0',
 'themes/twentyten/' => '3.0',
-'themes/twentyeleven/' => '3.2'
+'themes/twentyeleven/' => '3.2',
+'themes/twentytwelve/' => '3.5',
 );
 
 /**
@@ -477,7 +618,7 @@ function update_core($from, $to) {
 	$mysql_version  = $wpdb->db_version();
 	$required_php_version = '5.2.4';
 	$required_mysql_version = '5.0';
-	$wp_version = '3.4.1';
+	$wp_version = '3.4';
 	$php_compat     = version_compare( $php_version, $required_php_version, '>=' );
 	if ( file_exists( WP_CONTENT_DIR . '/db.php' ) && empty( $wpdb->is_mysql ) )
 		$mysql_compat = true;
@@ -695,12 +836,14 @@ function _redirect_to_about_wordpress( $new_version ) {
 
 	// See do_core_upgrade()
 	show_message( __('WordPress updated successfully') );
-	show_message( '<span class="hide-if-no-js">' . sprintf( __( 'Welcome to WordPress %1$s. You will be redirected to the About WordPress screen. If not, click <a href="%s">here</a>.' ), $new_version, esc_url( self_admin_url( 'about.php?updated' ) ) ) . '</span>' );
-	show_message( '<span class="hide-if-js">' . sprintf( __( 'Welcome to WordPress %1$s. <a href="%2$s">Learn more</a>.' ), $new_version, esc_url( self_admin_url( 'about.php?updated' ) ) ) . '</span>' );
+
+	// self_admin_url() won't exist when upgrading from <= 3.0, so relative URLs are intentional.
+	show_message( '<span class="hide-if-no-js">' . sprintf( __( 'Welcome to WordPress %1$s. You will be redirected to the About WordPress screen. If not, click <a href="%2$s">here</a>.' ), $new_version, 'about.php?updated' ) . '</span>' );
+	show_message( '<span class="hide-if-js">' . sprintf( __( 'Welcome to WordPress %1$s. <a href="%2$s">Learn more</a>.' ), $new_version, 'about.php?updated' ) . '</span>' );
 	echo '</div>';
 	?>
 <script type="text/javascript">
-window.location = '<?php echo self_admin_url( 'about.php?updated' ); ?>';
+window.location = 'about.php?updated';
 </script>
 	<?php
 

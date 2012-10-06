@@ -9,8 +9,13 @@
  */
 class WP_Plugins_List_Table extends WP_List_Table {
 
-	function __construct() {
+	function __construct( $args = array() ) {
 		global $status, $page;
+
+		parent::__construct( array(
+			'plural' => 'plugins',
+			'screen' => isset( $args['screen'] ) ? $args['screen'] : null,
+		) );
 
 		$status = 'all';
 		if ( isset( $_REQUEST['plugin_status'] ) && in_array( $_REQUEST['plugin_status'], array( 'active', 'inactive', 'recently_activated', 'upgrade', 'mustuse', 'dropins', 'search' ) ) )
@@ -20,10 +25,6 @@ class WP_Plugins_List_Table extends WP_List_Table {
 			$_SERVER['REQUEST_URI'] = add_query_arg('s', stripslashes($_REQUEST['s']) );
 
 		$page = $this->get_pagenum();
-
-		parent::__construct( array(
-			'plural' => 'plugins',
-		) );
 	}
 
 	function get_table_classes() {
@@ -31,13 +32,6 @@ class WP_Plugins_List_Table extends WP_List_Table {
 	}
 
 	function ajax_user_can() {
-		if ( is_multisite() ) {
-			$menu_perms = get_site_option( 'menu_items', array() );
-
-			if ( empty( $menu_perms['plugins'] ) && ! is_super_admin() )
-				return false;
-		}
-
 		return current_user_can('activate_plugins');
 	}
 
@@ -57,7 +51,7 @@ class WP_Plugins_List_Table extends WP_List_Table {
 			'dropins' => array()
 		);
 
-		$screen = get_current_screen();
+		$screen = $this->screen;
 
 		if ( ! is_multisite() || ( $screen->is_network && current_user_can('manage_network_plugins') ) ) {
 			if ( apply_filters( 'show_advanced_plugins', true, 'mustuse' ) )
@@ -76,27 +70,28 @@ class WP_Plugins_List_Table extends WP_List_Table {
 			}
 		}
 
-		set_transient( 'plugin_slugs', array_keys( $plugins['all'] ), 86400 );
+		set_transient( 'plugin_slugs', array_keys( $plugins['all'] ), DAY_IN_SECONDS );
 
 		if ( ! $screen->is_network ) {
 			$recently_activated = get_option( 'recently_activated', array() );
 
-			$one_week = 7*24*60*60;
 			foreach ( $recently_activated as $key => $time )
-				if ( $time + $one_week < time() )
+				if ( $time + WEEK_IN_SECONDS < time() )
 					unset( $recently_activated[$key] );
 			update_option( 'recently_activated', $recently_activated );
 		}
 
 		foreach ( (array) $plugins['all'] as $plugin_file => $plugin_data ) {
 			// Filter into individual sections
-			if ( ! $screen->is_network && is_plugin_active_for_network( $plugin_file ) ) {
+			if ( is_multisite() && ! $screen->is_network && is_network_only_plugin( $plugin_file ) ) {
+				unset( $plugins['all'][ $plugin_file ] );
+			} elseif ( ! $screen->is_network && is_plugin_active_for_network( $plugin_file ) ) {
 				unset( $plugins['all'][ $plugin_file ] );
 			} elseif ( ( ! $screen->is_network && is_plugin_active( $plugin_file ) )
 				|| ( $screen->is_network && is_plugin_active_for_network( $plugin_file ) ) ) {
 				$plugins['active'][ $plugin_file ] = $plugin_data;
 			} else {
-				if ( !$screen->is_network && isset( $recently_activated[ $plugin_file ] ) ) // Was the plugin recently activated?
+				if ( ! $screen->is_network && isset( $recently_activated[ $plugin_file ] ) ) // Was the plugin recently activated?
 					$plugins['recently_activated'][ $plugin_file ] = $plugin_data;
 				$plugins['inactive'][ $plugin_file ] = $plugin_data;
 			}
@@ -241,15 +236,13 @@ class WP_Plugins_List_Table extends WP_List_Table {
 
 		$actions = array();
 
-		$screen = get_current_screen();
-
 		if ( 'active' != $status )
-			$actions['activate-selected'] = $screen->is_network ? __( 'Network Activate' ) : __( 'Activate' );
+			$actions['activate-selected'] = $this->screen->is_network ? __( 'Network Activate' ) : __( 'Activate' );
 
 		if ( 'inactive' != $status && 'recent' != $status )
-			$actions['deactivate-selected'] = $screen->is_network ? __( 'Network Deactivate' ) : __( 'Deactivate' );
+			$actions['deactivate-selected'] = $this->screen->is_network ? __( 'Network Deactivate' ) : __( 'Deactivate' );
 
-		if ( !is_multisite() || $screen->is_network ) {
+		if ( !is_multisite() || $this->screen->is_network ) {
 			if ( current_user_can( 'update_plugins' ) )
 				$actions['update-selected'] = __( 'Update' );
 			if ( current_user_can( 'delete_plugins' ) && ( 'active' != $status ) )
@@ -276,10 +269,8 @@ class WP_Plugins_List_Table extends WP_List_Table {
 
 		echo '<div class="alignleft actions">';
 
-		$screen = get_current_screen();
-
-		if ( ! $screen->is_network && 'recently_activated' == $status )
-			submit_button( __( 'Clear List' ), 'secondary', 'clear-recent-list', false );
+		if ( ! $this->screen->is_network && 'recently_activated' == $status )
+			submit_button( __( 'Clear List' ), 'small', 'clear-recent-list', false );
 		elseif ( 'top' == $which && 'mustuse' == $status )
 			echo '<p>' . sprintf( __( 'Files in the <code>%s</code> directory are executed automatically.' ), str_replace( ABSPATH, '/', WPMU_PLUGIN_DIR ) ) . '</p>';
 		elseif ( 'top' == $which && 'dropins' == $status )
@@ -298,9 +289,7 @@ class WP_Plugins_List_Table extends WP_List_Table {
 	function display_rows() {
 		global $status;
 
-		$screen = get_current_screen();
-
-		if ( is_multisite() && !$screen->is_network && in_array( $status, array( 'mustuse', 'dropins' ) ) )
+		if ( is_multisite() && ! $this->screen->is_network && in_array( $status, array( 'mustuse', 'dropins' ) ) )
 			return;
 
 		foreach ( $this->items as $plugin_file => $plugin_data )
@@ -311,8 +300,7 @@ class WP_Plugins_List_Table extends WP_List_Table {
 		global $status, $page, $s, $totals;
 
 		$context = $status;
-
-		$screen = get_current_screen();
+		$screen = $this->screen;
 
 		// preorder
 		$actions = array(
@@ -378,7 +366,12 @@ class WP_Plugins_List_Table extends WP_List_Table {
 
 		$class = $is_active ? 'active' : 'inactive';
 		$checkbox_id =  "checkbox_" . md5($plugin_data['Name']);
-		$checkbox = in_array( $status, array( 'mustuse', 'dropins' ) ) ? '' : "<input type='checkbox' name='checked[]' value='" . esc_attr( $plugin_file ) . "' id='" . $checkbox_id . "' /><label class='screen-reader-text' for='" . $checkbox_id . "' >" . __('Select') . " " . $plugin_data['Name'] . "</label>";
+		if ( in_array( $status, array( 'mustuse', 'dropins' ) ) ) {
+			$checkbox = '';
+		} else {
+			$checkbox = "<label class='screen-reader-text' for='" . $checkbox_id . "' >" . sprintf( __( 'Select %s' ), $plugin_data['Name'] ) . "</label>"
+				. "<input type='checkbox' name='checked[]' value='" . esc_attr( $plugin_file ) . "' id='" . $checkbox_id . "' />";
+		}
 		if ( 'dropins' != $context ) {
 			$description = '<p>' . ( $plugin_data['Description'] ? $plugin_data['Description'] : '&nbsp;' ) . '</p>';
 			$plugin_name = $plugin_data['Name'];

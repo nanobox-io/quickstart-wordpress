@@ -111,7 +111,7 @@ case 'promote':
 		if ( is_multisite() && !is_user_member_of_blog( $id ) )
 			wp_die(__('Cheatin&#8217; uh?'));
 
-		$user = new WP_User($id);
+		$user = get_userdata( $id );
 		$user->set_role($_REQUEST['new_role']);
 	}
 
@@ -201,7 +201,7 @@ case 'delete':
 	$go_delete = 0;
 	foreach ( $userids as $id ) {
 		$id = (int) $id;
-		$user = new WP_User($id);
+		$user = get_userdata( $id );
 		if ( $id == $current_user->ID ) {
 			echo "<li>" . sprintf(__('ID #%1s: %2s <strong>The current user will not be deleted.</strong>'), $id, $user->user_login) . "</li>\n";
 		} else {
@@ -212,12 +212,12 @@ case 'delete':
 	?>
 	</ul>
 <?php if ( $go_delete ) : ?>
-	<fieldset><p><legend><?php echo _n( 'What should be done with posts and links owned by this user?', 'What should be done with posts and links owned by these users?', $go_delete ); ?></legend></p>
+	<fieldset><p><legend><?php echo _n( 'What should be done with posts owned by this user?', 'What should be done with posts owned by these users?', $go_delete ); ?></legend></p>
 	<ul style="list-style:none;">
 		<li><label><input type="radio" id="delete_option0" name="delete_option" value="delete" checked="checked" />
-		<?php _e('Delete all posts and links.'); ?></label></li>
+		<?php _e('Delete all posts.'); ?></label></li>
 		<li><input type="radio" id="delete_option1" name="delete_option" value="reassign" />
-		<?php echo '<label for="delete_option1">'.__('Attribute all posts and links to:').'</label>';
+		<?php echo '<label for="delete_option1">'.__('Attribute all posts to:').'</label>';
 		wp_dropdown_users( array( 'name' => 'reassign_user', 'exclude' => array_diff( $userids, array($current_user->ID) ) ) ); ?></li>
 	</ul></fieldset>
 	<input type="hidden" name="action" value="dodelete" />
@@ -302,7 +302,7 @@ case 'remove':
 	$go_remove = false;
  	foreach ( $userids as $id ) {
 		$id = (int) $id;
- 		$user = new WP_User($id);
+ 		$user = get_userdata( $id );
 		if ( $id == $current_user->ID && !is_super_admin() ) {
 			echo "<li>" . sprintf(__('ID #%1s: %2s <strong>The current user will not be removed.</strong>'), $id, $user->user_login) . "</li>\n";
 		} elseif ( !current_user_can('remove_user', $id) ) {
