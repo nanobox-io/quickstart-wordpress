@@ -88,7 +88,7 @@ class wpdb {
 	/**
 	 * Count of rows returned by previous query
 	 *
-	 * @since 0.71
+	 * @since 1.2.0
 	 * @access private
 	 * @var int
 	 */
@@ -113,9 +113,9 @@ class wpdb {
 	var $insert_id = 0;
 
 	/**
-	 * Last query made
+	 * Saved result of the last query made
 	 *
-	 * @since 0.71
+	 * @since 1.2.0
 	 * @access private
 	 * @var array
 	 */
@@ -124,29 +124,20 @@ class wpdb {
 	/**
 	 * Results of the last query made
 	 *
-	 * @since 0.71
+	 * @since 1.0.0
 	 * @access private
 	 * @var array|null
 	 */
 	var $last_result;
 
 	/**
-	 * MySQL result, which is either a resource or boolean.
-	 *
-	 * @since 0.71
-	 * @access protected
-	 * @var mixed
-	 */
-	protected $result;
-
-	/**
 	 * Saved info on the table column
 	 *
-	 * @since 0.71
-	 * @access protected
+	 * @since 1.2.0
+	 * @access private
 	 * @var array
 	 */
-	protected $col_info;
+	var $col_info;
 
 	/**
 	 * Saved queries that were executed
@@ -164,7 +155,7 @@ class wpdb {
 	 * in a single database. The second reason is for possible
 	 * security precautions.
 	 *
-	 * @since 2.5.0
+	 * @since 0.71
 	 * @access private
 	 * @var string
 	 */
@@ -173,7 +164,7 @@ class wpdb {
 	/**
 	 * Whether the database queries are ready to start executing.
 	 *
-	 * @since 2.3.2
+	 * @since 2.5.0
 	 * @access private
 	 * @var bool
 	 */
@@ -454,46 +445,10 @@ class wpdb {
 	 * Database Username
 	 *
 	 * @since 2.9.0
-	 * @access protected
+	 * @access private
 	 * @var string
 	 */
-	protected $dbuser;
-
-	/**
-	 * Database Password
-	 *
-	 * @since 3.1.0
-	 * @access protected
-	 * @var string
-	 */
-	protected $dbpassword;
-
-	/**
-	 * Database Name
-	 *
-	 * @since 3.1.0
-	 * @access protected
-	 * @var string
-	 */
-	protected $dbname;
-
-	/**
-	 * Database Host
-	 *
-	 * @since 3.1.0
-	 * @access protected
-	 * @var string
-	 */
-	protected $dbhost;
-
-	/**
-	 * Database Handle
-	 *
-	 * @since 0.71
-	 * @access protected
-	 * @var string
-	 */
-	protected $dbh;
+	var $dbuser;
 
 	/**
 	 * A textual description of the last query/get_row/get_var call
@@ -534,7 +489,7 @@ class wpdb {
 	 * @param string $dbhost MySQL database host
 	 */
 	function __construct( $dbuser, $dbpassword, $dbname, $dbhost ) {
-		register_shutdown_function( array( $this, '__destruct' ) );
+		register_shutdown_function( array( &$this, '__destruct' ) );
 
 		if ( WP_DEBUG )
 			$this->show_errors();
@@ -558,57 +513,6 @@ class wpdb {
 	 */
 	function __destruct() {
 		return true;
-	}
-
-	/**
-	 * PHP5 style magic getter, used to lazy-load expensive data.
-	 *
-	 * @since 3.5.0
-	 *
-	 * @param string $name The private member to get, and optionally process
-	 * @return mixed The private member
-	 */
-	function __get( $name ) {
-		if ( 'col_info' == $name )
-			$this->load_col_info();
-
-		return $this->$name;
-	}
-
-	/**
-	 * Magic function, for backwards compatibility
-	 *
-	 * @since 3.5.0
-	 *
-	 * @param string $name  The private member to set
-	 * @param mixed  $value The value to set
-	 */
-	function __set( $name, $value ) {
-		$this->$name = $value;
-	}
-
-	/**
-	 * Magic function, for backwards compatibility
-	 *
-	 * @since 3.5.0
-	 *
-	 * @param string $name  The private member to check
-	 *
-	 * @return bool If the member is set or not
-	 */
-	function __isset( $name ) {
-		return isset( $this->$name );
-	}
-
-	/**
-	 * Magic function, for backwards compatibility
-	 *
-	 * @since 3.5.0
-	 *
-	 * @param string $name  The private member to unset
-	 */
-	function __unset( $name ) {
-		unset( $this->$name );
 	}
 
 	/**
@@ -946,8 +850,7 @@ class wpdb {
 	 * @return void
 	 */
 	function escape_by_ref( &$string ) {
-		if ( ! is_float( $string ) )
-			$string = $this->_real_escape( $string );
+		$string = $this->_real_escape( $string );
 	}
 
 	/**
@@ -998,9 +901,8 @@ class wpdb {
 			$args = $args[0];
 		$query = str_replace( "'%s'", '%s', $query ); // in case someone mistakenly already singlequoted it
 		$query = str_replace( '"%s"', '%s', $query ); // doublequote unquoting
-		$query = str_replace( '%f' , '%F', $query ); // Force floats to be locale unaware
 		$query = preg_replace( '|(?<!%)%s|', "'%s'", $query ); // quote the strings, avoiding escaped strings like %%s
-		array_walk( $args, array( $this, 'escape_by_ref' ) );
+		array_walk( $args, array( &$this, 'escape_by_ref' ) );
 		return @vsprintf( $query, $args );
 	}
 
@@ -1030,7 +932,11 @@ class wpdb {
 		else
 			$error_str = sprintf( __( 'WordPress database error %1$s for query %2$s' ), $str, $this->last_query );
 
-		error_log( $error_str );
+		if ( function_exists( 'error_log' )
+			&& ( $log_file = @ini_get( 'error_log' ) )
+			&& ( 'syslog' == $log_file || @is_writable( $log_file ) )
+			)
+			@error_log( $error_str );
 
 		// Are we showing errors?
 		if ( ! $this->show_errors )
@@ -1117,9 +1023,6 @@ class wpdb {
 		$this->last_result = array();
 		$this->col_info    = null;
 		$this->last_query  = null;
-
-		if ( is_resource( $this->result ) )
-			mysql_free_result( $this->result );
 	}
 
 	/**
@@ -1131,13 +1034,10 @@ class wpdb {
 
 		$this->is_mysql = true;
 
-		$new_link = defined( 'MYSQL_NEW_LINK' ) ? MYSQL_NEW_LINK : true;
-		$client_flags = defined( 'MYSQL_CLIENT_FLAGS' ) ? MYSQL_CLIENT_FLAGS : 0;
-
 		if ( WP_DEBUG ) {
-			$this->dbh = mysql_connect( $this->dbhost, $this->dbuser, $this->dbpassword, $new_link, $client_flags );
+			$this->dbh = mysql_connect( $this->dbhost, $this->dbuser, $this->dbpassword, true );
 		} else {
-			$this->dbh = @mysql_connect( $this->dbhost, $this->dbuser, $this->dbpassword, $new_link, $client_flags );
+			$this->dbh = @mysql_connect( $this->dbhost, $this->dbuser, $this->dbpassword, true );
 		}
 
 		if ( !$this->dbh ) {
@@ -1204,22 +1104,29 @@ class wpdb {
 			return false;
 		}
 
-		if ( preg_match( '/^\s*(create|alter|truncate|drop)\s/i', $query ) ) {
+		if ( preg_match( '/^\s*(create|alter|truncate|drop) /i', $query ) ) {
 			$return_val = $this->result;
-		} elseif ( preg_match( '/^\s*(insert|delete|update|replace)\s/i', $query ) ) {
+		} elseif ( preg_match( '/^\s*(insert|delete|update|replace) /i', $query ) ) {
 			$this->rows_affected = mysql_affected_rows( $this->dbh );
 			// Take note of the insert_id
-			if ( preg_match( '/^\s*(insert|replace)\s/i', $query ) ) {
+			if ( preg_match( '/^\s*(insert|replace) /i', $query ) ) {
 				$this->insert_id = mysql_insert_id($this->dbh);
 			}
 			// Return number of rows affected
 			$return_val = $this->rows_affected;
 		} else {
+			$i = 0;
+			while ( $i < @mysql_num_fields( $this->result ) ) {
+				$this->col_info[$i] = @mysql_fetch_field( $this->result );
+				$i++;
+			}
 			$num_rows = 0;
 			while ( $row = @mysql_fetch_object( $this->result ) ) {
 				$this->last_result[$num_rows] = $row;
 				$num_rows++;
 			}
+
+			@mysql_free_result( $this->result );
 
 			// Log number of rows the query returned
 			// and return number of rows selected
@@ -1549,22 +1456,6 @@ class wpdb {
 	}
 
 	/**
-	 * Load the column metadata from the last query.
-	 *
-	 * @since 3.5.0
-	 *
-	 * @access protected
-	 */
-	protected function load_col_info() {
-		if ( $this->col_info )
-			return;
-
-		for ( $i = 0; $i < @mysql_num_fields( $this->result ); $i++ ) {
-			$this->col_info[ $i ] = @mysql_fetch_field( $this->result, $i );
-		}
-	}
-
-	/**
 	 * Retrieve column metadata from the last query.
 	 *
 	 * @since 0.71
@@ -1574,8 +1465,6 @@ class wpdb {
 	 * @return mixed Column Results
 	 */
 	function get_col_info( $info_type = 'name', $col_offset = -1 ) {
-		$this->load_col_info();
-
 		if ( $this->col_info ) {
 			if ( $col_offset == -1 ) {
 				$i = 0;
@@ -1658,32 +1547,11 @@ class wpdb {
 	 * Called when WordPress is generating the table scheme.
 	 *
 	 * @since 2.5.0
-	 * @deprecated 3.5.0
-	 * @deprecated Use wpdb::has_cap( 'collation' )
 	 *
 	 * @return bool True if collation is supported, false if version does not
 	 */
 	function supports_collation() {
-		_deprecated_function( __FUNCTION__, '3.5', 'wpdb::has_cap( \'collation\' )' );
 		return $this->has_cap( 'collation' );
-	}
-
-	/**
-	 * The database character collate.
-	 *
-	 * @since 3.5.0
-	 *
-	 * @return string The database character collate.
-	 */
-	public function get_charset_collate() {
-		$charset_collate = '';
-
-		if ( ! empty( $this->charset ) )
-			$charset_collate = "DEFAULT CHARACTER SET $this->charset";
-		if ( ! empty( $this->collate ) )
-			$charset_collate .= " COLLATE $this->collate";
-
-		return $charset_collate;
 	}
 
 	/**

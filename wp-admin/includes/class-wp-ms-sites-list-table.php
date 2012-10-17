@@ -9,10 +9,9 @@
  */
 class WP_MS_Sites_List_Table extends WP_List_Table {
 
-	function __construct( $args = array() ) {
+	function __construct() {
 		parent::__construct( array(
 			'plural' => 'sites',
-			'screen' => isset( $args['screen'] ) ? $args['screen'] : null,
 		) );
 	}
 
@@ -214,7 +213,6 @@ class WP_MS_Sites_List_Table extends WP_List_Table {
 				switch ( $column_name ) {
 					case 'cb': ?>
 						<th scope="row" class="check-column">
-							<label class="screen-reader-text" for="blog_<?php echo $blog['blog_id']; ?>"><?php printf( __( 'Select %s' ), $blogname ); ?></label>
 							<input type="checkbox" id="blog_<?php echo $blog['blog_id'] ?>" name="allblogs[]" value="<?php echo esc_attr( $blog['blog_id'] ) ?>" />
 						</th>
 					<?php
@@ -231,11 +229,8 @@ class WP_MS_Sites_List_Table extends WP_List_Table {
 						echo "<td class='column-$column_name $column_name'$style>"; ?>
 							<a href="<?php echo esc_url( network_admin_url( 'site-info.php?id=' . $blog['blog_id'] ) ); ?>" class="edit"><?php echo $blogname . $blog_state; ?></a>
 							<?php
-							if ( 'list' != $mode ) {
-								switch_to_blog( $blog['blog_id'] );
-								echo '<p>' . sprintf( _x( '%1$s &#8211; <em>%2$s</em>', '%1$s: site name. %2$s: site tagline.' ), get_option( 'blogname' ), get_option( 'blogdescription ' ) ) . '</p>';
-								restore_current_blog();
-							}
+							if ( 'list' != $mode )
+								echo '<p>' . sprintf( _x( '%1$s &#8211; <em>%2$s</em>', '%1$s: site name. %2$s: site tagline.' ), get_blog_option( $blog['blog_id'], 'blogname' ), get_blog_option( $blog['blog_id'], 'blogdescription ' ) ) . '</p>';
 
 							// Preordered.
 							$actions = array(

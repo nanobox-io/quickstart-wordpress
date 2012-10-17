@@ -42,6 +42,7 @@
  *
  * @since 2.1.0
  * @access private
+ * @usedby wp_list_bookmarks()
  *
  * @param array $bookmarks List of bookmarks to traverse
  * @param string|array $args Optional. Overwrite the defaults.
@@ -78,7 +79,7 @@ function _walk_bookmarks($bookmarks, $args = '' ) {
 		if ( $show_updated )
 			if ( '00' != substr($bookmark->link_updated_f, 0, 2) ) {
 				$title .= ' (';
-				$title .= sprintf(__('Last updated: %s'), date(get_option('links_updated_date_format'), $bookmark->link_updated_f + (get_option('gmt_offset') * HOUR_IN_SECONDS)));
+				$title .= sprintf(__('Last updated: %s'), date(get_option('links_updated_date_format'), $bookmark->link_updated_f + (get_option('gmt_offset') * 3600)));
 				$title .= ')';
 			}
 
@@ -188,7 +189,7 @@ function _walk_bookmarks($bookmarks, $args = '' ) {
  * @link http://codex.wordpress.org/Template_Tags/wp_list_bookmarks
  *
  * @since 2.1.0
- * @uses _walk_bookmarks() Used to iterate over all of the bookmarks and return
+ * @uses _list_bookmarks() Used to iterate over all of the bookmarks and return
  *		the html
  * @uses get_terms() Gets all of the categories that are for links.
  *

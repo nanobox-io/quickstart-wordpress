@@ -29,12 +29,17 @@ function wp_ajax_nopriv_autosave() {
  * GET-based Ajax handlers.
  */
 function wp_ajax_fetch_list() {
-	global $wp_list_table;
+	global $current_screen, $wp_list_table;
 
 	$list_class = $_GET['list_args']['class'];
 	check_ajax_referer( "fetch-list-$list_class", '_ajax_fetch_list_nonce' );
 
-	$wp_list_table = _get_list_table( $list_class, array( 'screen' => $_GET['list_args']['screen']['id'] ) );
+	$current_screen = convert_to_screen( $_GET['list_args']['screen']['id'] );
+
+	define( 'WP_NETWORK_ADMIN', $current_screen->is_network );
+	define( 'WP_USER_ADMIN', $current_screen->is_user );
+
+	$wp_list_table = _get_list_table( $list_class );
 	if ( ! $wp_list_table )
 		wp_die( 0 );
 
@@ -188,7 +193,7 @@ function wp_ajax_autocomplete_user() {
 }
 
 function wp_ajax_dashboard_widgets() {
-	require_once ABSPATH . 'wp-admin/includes/dashboard.php';
+	require ABSPATH . 'wp-admin/includes/dashboard.php';
 
 	switch ( $_GET['widget'] ) {
 		case 'dashboard_incoming_links' :
@@ -326,7 +331,7 @@ function _wp_ajax_add_hierarchical_term() {
 		$term_id = $parent->term_id;
 
 		while ( $parent->parent ) { // get the top parent
-			$parent = get_term( $parent->parent, $taxonomy->name );
+			$parent = &get_term( $parent->parent, $taxonomy->name );
 			if ( is_wp_error( $parent ) )
 				break;
 			$term_id = $parent->term_id;
@@ -507,7 +512,7 @@ function wp_ajax_delete_page( $action ) {
 	if ( !current_user_can( 'delete_page', $id ) )
 		wp_die( -1 );
 
-	if ( ! get_post( $id ) )
+	if ( !get_page( $id ) )
 		wp_die( 1 );
 
 	if ( wp_delete_post( $id ) )
@@ -610,7 +615,9 @@ function wp_ajax_add_tag() {
 		$x->send();
 	}
 
-	$wp_list_table = _get_list_table( 'WP_Terms_List_Table', array( 'screen' => $_POST['screen'] ) );
+	set_current_screen( $_POST['screen'] );
+
+	$wp_list_table = _get_list_table('WP_Terms_List_Table');
 
 	$level = 0;
 	if ( is_taxonomy_hierarchical($taxonomy) ) {
@@ -679,7 +686,9 @@ function wp_ajax_get_comments( $action ) {
 
 	check_ajax_referer( $action );
 
-	$wp_list_table = _get_list_table( 'WP_Post_Comments_List_Table', array( 'screen' => 'edit-comments' ) );
+	set_current_screen( 'edit-comments' );
+
+	$wp_list_table = _get_list_table('WP_Post_Comments_List_Table');
 
 	if ( !current_user_can( 'edit_post', $post_id ) )
 		wp_die( -1 );
@@ -713,6 +722,8 @@ function wp_ajax_replyto_comment( $action ) {
 		$action = 'replyto-comment';
 
 	check_ajax_referer( $action, '_ajax_nonce-replyto-comment' );
+
+	set_current_screen( 'edit-comments' );
 
 	$comment_post_ID = (int) $_POST['comment_post_ID'];
 	if ( !current_user_can( 'edit_post', $comment_post_ID ) )
@@ -771,9 +782,9 @@ function wp_ajax_replyto_comment( $action ) {
 			_wp_dashboard_recent_comments_row( $comment );
 		} else {
 			if ( 'single' == $_REQUEST['mode'] ) {
-				$wp_list_table = _get_list_table('WP_Post_Comments_List_Table', array( 'screen' => 'edit-comments' ) );
+				$wp_list_table = _get_list_table('WP_Post_Comments_List_Table');
 			} else {
-				$wp_list_table = _get_list_table('WP_Comments_List_Table', array( 'screen' => 'edit-comments' ) );
+				$wp_list_table = _get_list_table('WP_Comments_List_Table');
 			}
 			$wp_list_table->single_row( $comment );
 		}
@@ -800,6 +811,8 @@ function wp_ajax_edit_comment() {
 
 	check_ajax_referer( 'replyto-comment', '_ajax_nonce-replyto-comment' );
 
+	set_current_screen( 'edit-comments' );
+
 	$comment_id = (int) $_POST['comment_ID'];
 	if ( ! current_user_can( 'edit_comment', $comment_id ) )
 		wp_die( -1 );
@@ -814,7 +827,7 @@ function wp_ajax_edit_comment() {
 	$comments_status = isset($_POST['comments_listing']) ? $_POST['comments_listing'] : '';
 
 	$checkbox = ( isset($_POST['checkbox']) && true == $_POST['checkbox'] ) ? 1 : 0;
-	$wp_list_table = _get_list_table( $checkbox ? 'WP_Comments_List_Table' : 'WP_Post_Comments_List_Table', array( 'screen' => 'edit-comments' ) );
+	$wp_list_table = _get_list_table( $checkbox ? 'WP_Comments_List_Table' : 'WP_Post_Comments_List_Table' );
 
 	$comment = get_comment( $comment_id );
 
@@ -1005,19 +1018,17 @@ function wp_ajax_add_user( $action ) {
 		) );
 		$x->send();
 	}
-	$user_object = get_userdata( $user_id );
+	$user_object = new WP_User( $user_id );
 
 	$wp_list_table = _get_list_table('WP_Users_List_Table');
-
-	$role = current( $user_object->roles );
 
 	$x = new WP_Ajax_Response( array(
 		'what' => 'user',
 		'id' => $user_id,
-		'data' => $wp_list_table->single_row( $user_object, '', $role ),
+		'data' => $wp_list_table->single_row( $user_object, '', $user_object->roles[0] ),
 		'supplemental' => array(
 			'show-link' => sprintf(__( 'User <a href="#%s">%s</a> added' ), "user-$user_id", $user_object->user_login),
-			'role' => $role,
+			'role' => $user_object->roles[0]
 		)
 	) );
 	$x->send();
@@ -1317,6 +1328,8 @@ function wp_ajax_inline_save() {
 			wp_die( __( 'You are not allowed to edit this post.' ) );
 	}
 
+	set_current_screen( $_POST['screen'] );
+
 	if ( $last = wp_check_post_lock( $post_ID ) ) {
 		$last_user = get_userdata( $last );
 		$last_user_name = $last_user ? $last_user->display_name : __( 'Someone' );
@@ -1352,21 +1365,10 @@ function wp_ajax_inline_save() {
 	// update the post
 	edit_post();
 
-	$wp_list_table = _get_list_table( 'WP_Posts_List_Table', array( 'screen' => $_POST['screen'] ) );
+	$wp_list_table = _get_list_table('WP_Posts_List_Table');
 
 	$mode = $_POST['post_view'];
-
-	$level = 0;
-	$request_post = array( get_post( $_POST['post_ID'] ) );
-	$parent = $request_post[0]->post_parent;
-
-	while ( $parent > 0 ) {
-		$parent_post = get_post( $parent );
-		$parent = $parent_post->post_parent;
-		$level++;
-	}
-
-	$wp_list_table->display_rows( array( get_post( $_POST['post_ID'] ) ), $level );
+	$wp_list_table->display_rows( array( get_post( $_POST['post_ID'] ) ) );
 
 	wp_die();
 }
@@ -1384,7 +1386,9 @@ function wp_ajax_inline_save_tax() {
 	if ( ! current_user_can( $tax->cap->edit_terms ) )
 		wp_die( -1 );
 
-	$wp_list_table = _get_list_table( 'WP_Terms_List_Table', array( 'screen' => 'edit-' . $taxonomy ) );
+	set_current_screen( 'edit-' . $taxonomy );
+
+	$wp_list_table = _get_list_table('WP_Terms_List_Table');
 
 	if ( ! isset($_POST['tax_ID']) || ! ( $id = (int) $_POST['tax_ID'] ) )
 		wp_die( -1 );
@@ -1400,19 +1404,14 @@ function wp_ajax_inline_save_tax() {
 				wp_die( $tag->get_error_message() );
 			wp_die( __( 'Item not updated.' ) );
 		}
+
+		echo $wp_list_table->single_row( $tag );
 	} else {
 		if ( is_wp_error($updated) && $updated->get_error_message() )
 			wp_die( $updated->get_error_message() );
 		wp_die( __( 'Item not updated.' ) );
 	}
-	$level = 0;
-	$parent = $tag->parent;
-	while ( $parent > 0 ) {
-		$parent_tag = get_term( $parent, $taxonomy );
-		$parent = $parent_tag->parent;
-		$level++;
-	}
-	echo $wp_list_table->single_row( $tag, $level );
+
 	wp_die();
 }
 
@@ -1596,12 +1595,12 @@ function wp_ajax_upload_attachment() {
 	check_ajax_referer( 'media-form' );
 
 	if ( ! current_user_can( 'upload_files' ) )
-		wp_send_json_error();
+		wp_die( -1 );
 
 	if ( isset( $_REQUEST['post_id'] ) ) {
 		$post_id = $_REQUEST['post_id'];
 		if ( ! current_user_can( 'edit_post', $post_id ) )
-			wp_send_json_error();
+			wp_die( -1 );
 	} else {
 		$post_id = null;
 	}
@@ -1611,10 +1610,14 @@ function wp_ajax_upload_attachment() {
 	$attachment_id = media_handle_upload( 'async-upload', $post_id, $post_data );
 
 	if ( is_wp_error( $attachment_id ) ) {
-		wp_send_json_error( array(
-			'message'  => $attachment_id->get_error_message(),
-			'filename' => $_FILES['async-upload']['name'],
+		echo json_encode( array(
+			'type' => 'error',
+			'data' => array(
+				'message'  => $attachment_id->get_error_message(),
+				'filename' => $_FILES['async-upload']['name'],
+			),
 		) );
+		wp_die();
 	}
 
 	if ( isset( $post_data['context'] ) && isset( $post_data['theme'] ) ) {
@@ -1625,10 +1628,19 @@ function wp_ajax_upload_attachment() {
 			update_post_meta( $attachment_id, '_wp_attachment_is_custom_header', $post_data['theme'] );
 	}
 
-	if ( ! $attachment = wp_prepare_attachment_for_js( $attachment_id ) )
-		wp_send_json_error();
+	$post = get_post( $attachment_id );
 
-	wp_send_json_success( $attachment );
+	echo json_encode( array(
+		'type' => 'success',
+		'data' => array(
+			'id'       => $attachment_id,
+			'title'    => esc_attr( $post->post_title ),
+			'filename' => esc_html( basename( $post->guid ) ),
+			'url'      => wp_get_attachment_url( $attachment_id ),
+			'meta'     => wp_get_attachment_metadata( $attachment_id ),
+		),
+	) );
+	wp_die();
 }
 
 function wp_ajax_image_editor() {
@@ -1699,7 +1711,7 @@ function wp_ajax_wp_fullscreen_save_post() {
 	elseif ( isset( $_POST['post_type'] ) && post_type_exists( $_POST['post_type'] ) )
 		$post_type = $_POST['post_type'];
 
-	check_ajax_referer('update-post_' . $post_id, '_wpnonce');
+	check_ajax_referer('update-' . $post_type . '_' . $post_id, '_wpnonce');
 
 	$post_id = edit_post();
 
@@ -1741,7 +1753,7 @@ function wp_ajax_wp_remove_post_lock() {
 	if ( ! $post = get_post( $post_id ) )
 		wp_die( 0 );
 
-	check_ajax_referer( 'update-post_' . $post_id );
+	check_ajax_referer( 'update-' . $post->post_type . '_' . $post_id );
 
 	if ( ! current_user_can( 'edit_post', $post_id ) )
 		wp_die( -1 );
@@ -1772,50 +1784,4 @@ function wp_ajax_dismiss_wp_pointer() {
 
 	update_user_meta( get_current_user_id(), 'dismissed_wp_pointers', $dismissed );
 	wp_die( 1 );
-}
-
-/**
- * Get an attachment.
- *
- * @since 3.5.0
- */
-function wp_ajax_get_attachment() {
-	if ( ! isset( $_REQUEST['id'] ) )
-		wp_send_json_error();
-
-	if ( ! $id = absint( $_REQUEST['id'] ) )
-		wp_send_json_error();
-
-	if ( ! current_user_can( 'read_post', $id ) )
-		wp_send_json_error();
-
-	if ( ! $attachment = wp_prepare_attachment_for_js( $id ) )
-		wp_send_json_error();
-
-	wp_send_json_success( $attachment );
-}
-
-/**
- * Query for attachments.
- *
- * @since 3.5.0
- */
-function wp_ajax_query_attachments() {
-	$query = isset( $_REQUEST['query'] ) ? (array) $_REQUEST['query'] : array();
-	$query = array_intersect_key( $query, array_flip( array(
-		's', 'order', 'orderby', 'posts_per_page', 'paged', 'post_mime_type',
-		'post_parent', 'post__in', 'post__not_in',
-	) ) );
-
-	$query['post_type'] = 'attachment';
-	$query['post_status'] = 'inherit';
-	if ( current_user_can( get_post_type_object( 'attachment' )->cap->read_private_posts ) )
-		$query['post_status'] .= ',private';
-
-	$query = new WP_Query( $query );
-
-	$posts = array_map( 'wp_prepare_attachment_for_js', $query->posts );
-	$posts = array_filter( $posts );
-
-	wp_send_json_success( $posts );
 }

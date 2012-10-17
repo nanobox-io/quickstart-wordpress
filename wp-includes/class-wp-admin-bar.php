@@ -1,12 +1,4 @@
 <?php
-/**
- * The WordPress Toolbar
- *
- * @since 3.1.0
- *
- * @package WordPress
- * @subpackage Toolbar
- */
 class WP_Admin_Bar {
 	private $nodes = array();
 	private $bound = false;
@@ -112,7 +104,7 @@ class WP_Admin_Bar {
 			$defaults = get_object_vars( $maybe_defaults );
 
 		// Do the same for 'meta' items.
-		if ( ! empty( $defaults['meta'] ) && ! empty( $args['meta'] ) )
+		if ( ! empty( $defaults['meta'] ) && empty( $args['meta'] ) )
 			$args['meta'] = wp_parse_args( $args['meta'], $defaults['meta'] );
 
 		$args = wp_parse_args( $args, $defaults );
@@ -157,13 +149,13 @@ class WP_Admin_Bar {
 	}
 
 	final public function get_nodes() {
-		if ( ! $nodes = $this->_get_nodes() )
-			return;
+	   if ( ! $nodes = $this->_get_nodes() )
+	      return;
 
-		foreach ( $nodes as &$node ) {
-			$node = clone $node;
-		}
-		return $nodes;
+	   foreach ( $nodes as &$node ) {
+	       $node = clone $node;
+	   }
+	   return $nodes;
 	}
 
 	final protected function _get_nodes() {
@@ -192,7 +184,7 @@ class WP_Admin_Bar {
 	/**
 	 * Remove a node.
 	 *
-	 * @param string The ID of the item.
+	 * @return object The removed node.
 	 */
 	public function remove_node( $id ) {
 		$this->_unset_node( $id );
@@ -245,9 +237,8 @@ class WP_Admin_Bar {
 
 			if ( $node->type == 'group' ) {
 				if ( empty( $node->meta['class'] ) )
-					$node->meta['class'] = $group_class;
-				else
-					$node->meta['class'] .= ' ' . $group_class;
+					$node->meta['class'] = '';
+				$node->meta['class'] .= ' ' . $group_class;
 			}
 
 			// Items in items aren't allowed. Wrap nested items in 'default' groups.
@@ -348,13 +339,11 @@ class WP_Admin_Bar {
 
 		?>
 		<div id="wpadminbar" class="<?php echo $class; ?>" role="navigation">
-			<a class="screen-reader-text screen-reader-shortcut" href="#wp-toolbar" tabindex="1"><?php _e('Skip to toolbar'); ?></a>
-			<div class="quicklinks" id="wp-toolbar" role="navigation" aria-label="<?php esc_attr_e('Top navigation toolbar.'); ?>">
+			<div class="quicklinks">
 				<?php foreach ( $root->children as $group ) {
 					$this->_render_group( $group );
 				} ?>
 			</div>
-			<a class="screen-reader-text screen-reader-shortcut" href="<?php echo esc_url( wp_logout_url() ); ?>"><?php _e('Log Out'); ?></a>
 		</div>
 
 		<?php
@@ -378,12 +367,9 @@ class WP_Admin_Bar {
 		if ( $node->type != 'group' || empty( $node->children ) )
 			return;
 
-		if ( ! empty( $node->meta['class'] ) )
-			$class = ' class="' . esc_attr( trim( $node->meta['class'] ) ) . '"';
-		else
-			$class = '';
+		$class = empty( $node->meta['class'] ) ? '' : $node->meta['class'];
 
-		?><ul id="<?php echo esc_attr( 'wp-admin-bar-' . $node->id ); ?>"<?php echo $class; ?>><?php
+		?><ul id="<?php echo esc_attr( 'wp-admin-bar-' . $node->id ); ?>" class="<?php echo esc_attr( $class ); ?>"><?php
 			foreach ( $node->children as $item ) {
 				$this->_render_item( $item );
 			}
@@ -397,25 +383,22 @@ class WP_Admin_Bar {
 		$is_parent = ! empty( $node->children );
 		$has_link  = ! empty( $node->href );
 
-		$tabindex = isset( $node->meta['tabindex'] ) ? (int) $node->meta['tabindex'] : '';
-		$aria_attributes = $tabindex ? 'tabindex="' . $tabindex . '"' : '';
+		$tabindex = isset( $node->meta['tabindex'] ) ? (int) $node->meta['tabindex'] : 10;
 
 		$menuclass = '';
+		$aria_attributes = 'tabindex="' . $tabindex . '"';
 
 		if ( $is_parent ) {
-			$menuclass = 'menupop ';
+			$menuclass = 'menupop';
 			$aria_attributes .= ' aria-haspopup="true"';
 		}
 
 		if ( ! empty( $node->meta['class'] ) )
-			$menuclass .= $node->meta['class'];
-
-		if ( $menuclass )
-			$menuclass = ' class="' . esc_attr( trim( $menuclass ) ) . '"';
+			$menuclass .= ' ' . $node->meta['class'];
 
 		?>
 
-		<li id="<?php echo esc_attr( 'wp-admin-bar-' . $node->id ); ?>"<?php echo $menuclass; ?>><?php
+		<li id="<?php echo esc_attr( 'wp-admin-bar-' . $node->id ); ?>" class="<?php echo esc_attr( $menuclass ); ?>"><?php
 			if ( $has_link ):
 				?><a class="ab-item" <?php echo $aria_attributes; ?> href="<?php echo esc_url( $node->href ) ?>"<?php
 					if ( ! empty( $node->meta['onclick'] ) ) :

@@ -1525,11 +1525,8 @@ class WP_Rewrite {
 		$home_path = parse_url( home_url() );
 		$robots_rewrite = ( empty( $home_path['path'] ) || '/' == $home_path['path'] ) ? array( 'robots\.txt$' => $this->index . '?robots=1' ) : array();
 
-		// Old feed and service files
-		$deprecated_files = array(
-			'.*wp-(atom|rdf|rss|rss2|feed|commentsrss2)\.php$' => $this->index . '?feed=old',
-			'.*wp-app\.php$' => $this->index . '?error=403',
-		);
+		// Old feed files
+		$old_feed_files = array( '.*wp-(atom|rdf|rss|rss2|feed|commentsrss2)\.php$' => $this->index . '?feed=old' );
 
 		// Registration rules
 		$registration_pages = array();
@@ -1588,9 +1585,9 @@ class WP_Rewrite {
 
 		// Put them together.
 		if ( $this->use_verbose_page_rules )
-			$this->rules = array_merge($this->extra_rules_top, $robots_rewrite, $deprecated_files, $registration_pages, $root_rewrite, $comments_rewrite, $search_rewrite,  $author_rewrite, $date_rewrite, $page_rewrite, $post_rewrite, $this->extra_rules);
+			$this->rules = array_merge($this->extra_rules_top, $robots_rewrite, $old_feed_files, $registration_pages, $root_rewrite, $comments_rewrite, $search_rewrite,  $author_rewrite, $date_rewrite, $page_rewrite, $post_rewrite, $this->extra_rules);
 		else
-			$this->rules = array_merge($this->extra_rules_top, $robots_rewrite, $deprecated_files, $registration_pages, $root_rewrite, $comments_rewrite, $search_rewrite,  $author_rewrite, $date_rewrite, $post_rewrite, $page_rewrite, $this->extra_rules);
+			$this->rules = array_merge($this->extra_rules_top, $robots_rewrite, $old_feed_files, $registration_pages, $root_rewrite, $comments_rewrite, $search_rewrite,  $author_rewrite, $date_rewrite, $post_rewrite, $page_rewrite, $this->extra_rules);
 
 		do_action_ref_array('generate_rewrite_rules', array(&$this));
 		$this->rules = apply_filters('rewrite_rules_array', $this->rules);
@@ -1641,7 +1638,7 @@ class WP_Rewrite {
 		if ( ! $this->using_permalinks() )
 			return '';
 
-		$site_root = parse_url( site_url() );
+		$site_root = parse_url(get_option('siteurl'));
 		if ( isset( $site_root['path'] ) )
 			$site_root = trailingslashit($site_root['path']);
 
@@ -1729,17 +1726,75 @@ class WP_Rewrite {
 		<rewrite>
 			<rules>';
 		}
-
-		$rules .= '
-			<rule name="wordpress" patternSyntax="Wildcard">
-				<match url="*" />
-					<conditions>
-						<add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
-						<add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+		if ( !is_multisite() ) {
+			$rules .= '
+				<rule name="wordpress" patternSyntax="Wildcard">
+					<match url="*" />
+						<conditions>
+							<add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+							<add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+						</conditions>
+					<action type="Rewrite" url="index.php" />
+				</rule>';
+		} else {
+			if (is_subdomain_install()) {
+				$rules .= '
+				<rule name="wordpress - Rule 1" stopProcessing="true">
+					<match url="^index\.php$" ignoreCase="false" />
+					<action type="None" />
+				</rule>
+				<rule name="wordpress - Rule 2" stopProcessing="true">
+					<match url="^files/(.+)" ignoreCase="false" />
+					<action type="Rewrite" url="wp-includes/ms-files.php?file={R:1}" appendQueryString="false" />
+				</rule>
+				<rule name="wordpress - Rule 3" stopProcessing="true">
+					<match url="^" ignoreCase="false" />
+					<conditions logicalGrouping="MatchAny">
+						<add input="{REQUEST_FILENAME}" matchType="IsFile" ignoreCase="false" />
+						<add input="{REQUEST_FILENAME}" matchType="IsDirectory" ignoreCase="false" />
 					</conditions>
-				<action type="Rewrite" url="index.php" />
-			</rule>';
-
+					<action type="None" />
+				</rule>
+				<rule name="wordpress - Rule 4" stopProcessing="true">
+					<match url="." ignoreCase="false" />
+					<action type="Rewrite" url="index.php" />
+				</rule>';
+			} else {
+				$rules .= '
+				<rule name="wordpress - Rule 1" stopProcessing="true">
+					<match url="^index\.php$" ignoreCase="false" />
+					<action type="None" />
+				</rule>
+				<rule name="wordpress - Rule 2" stopProcessing="true">
+					<match url="^([_0-9a-zA-Z-]+/)?files/(.+)" ignoreCase="false" />
+					<action type="Rewrite" url="wp-includes/ms-files.php?file={R:2}" appendQueryString="false" />
+				</rule>
+				<rule name="wordpress - Rule 3" stopProcessing="true">
+					<match url="^([_0-9a-zA-Z-]+/)?wp-admin$" ignoreCase="false" />
+					<action type="Redirect" url="{R:1}wp-admin/" redirectType="Permanent" />
+				</rule>
+				<rule name="wordpress - Rule 4" stopProcessing="true">
+					<match url="^" ignoreCase="false" />
+					<conditions logicalGrouping="MatchAny">
+						<add input="{REQUEST_FILENAME}" matchType="IsFile" ignoreCase="false" />
+						<add input="{REQUEST_FILENAME}" matchType="IsDirectory" ignoreCase="false" />
+					</conditions>
+					<action type="None" />
+				</rule>
+				<rule name="wordpress - Rule 5" stopProcessing="true">
+					<match url="^([_0-9a-zA-Z-]+/)?(wp-(content|admin|includes).*)" ignoreCase="false" />
+					<action type="Rewrite" url="{R:1}" />
+				</rule>
+				<rule name="wordpress - Rule 6" stopProcessing="true">
+					<match url="^([_0-9a-zA-Z-]+/)?(.*\.php)$" ignoreCase="false" />
+					<action type="Rewrite" url="{R:2}" />
+				</rule>
+				<rule name="wordpress - Rule 7" stopProcessing="true">
+					<match url="." ignoreCase="false" />
+					<action type="Rewrite" url="index.php" />
+				</rule>';
+			}
+		}
 		if ( $add_parent_tags ) {
 			$rules .= '
 			</rules>

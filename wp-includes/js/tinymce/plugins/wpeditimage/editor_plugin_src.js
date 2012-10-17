@@ -11,43 +11,36 @@
 			t.editor = ed;
 			t._createButtons();
 
-			ed.addCommand('WP_EditImage', t._editImage);
+			// Register the command so that it can be invoked by using tinyMCE.activeEditor.execCommand('...');
+			ed.addCommand('WP_EditImage', function() {
+				var el = ed.selection.getNode(), vp, H, W, cls = ed.dom.getAttrib(el, 'class');
+
+				if ( cls.indexOf('mceItem') != -1 || cls.indexOf('wpGallery') != -1 || el.nodeName != 'IMG' )
+					return;
+
+				vp = tinymce.DOM.getViewPort();
+				H = 680 < (vp.h - 70) ? 680 : vp.h - 70;
+				W = 650 < vp.w ? 650 : vp.w;
+
+				ed.windowManager.open({
+					file: url + '/editimage.html',
+					width: W+'px',
+					height: H+'px',
+					inline: true
+				});
+			});
 
 			ed.onInit.add(function(ed) {
-				ed.dom.events.add(ed.getBody(), 'mousedown', function(e) {
+				ed.dom.events.add(ed.getBody(), 'dragstart', function(e) {
 					var parent;
 
 					if ( e.target.nodeName == 'IMG' && ( parent = ed.dom.getParent(e.target, 'div.mceTemp') ) ) {
-						if ( tinymce.isGecko )
-							ed.selection.select(parent);
-						else if ( tinymce.isWebKit )
-							ed.dom.events.cancel(e);
-					}
-				});
-
-				// when pressing Return inside a caption move the caret to a new parapraph under it
-				ed.dom.events.add(ed.getBody(), 'keydown', function(e) {
-					var n, DL, DIV, P, content;
-
-					if ( e.keyCode == 13 ) {
-						n = ed.selection.getNode();
-						DL = ed.dom.getParent(n, 'dl.wp-caption');
-
-						if ( DL )
-							DIV = ed.dom.getParent(DL, 'div.mceTemp');
-
-						if ( DIV ) {
-							ed.dom.events.cancel(e);
-							P = ed.dom.create('p', {}, '\uFEFF');
-							ed.dom.insertAfter( P, DIV );
-							ed.selection.setCursorLocation(P, 0);
-							return false;
-						}
+						ed.selection.select(parent);
 					}
 				});
 			});
 
-			// resize the caption <dl> when the image is soft-resized by the user
+			// resize the caption <dl> when the image is soft-resized by the user (only possible in Firefox and IE)
 			ed.onMouseUp.add(function(ed, e) {
 				if ( tinymce.isWebKit || tinymce.isOpera )
 					return;
@@ -94,6 +87,35 @@
 					};
 
 					ed.plugins.wordpress._showButtons(target, 'wp_editbtns');
+				}
+			});
+
+			// when pressing Return inside a caption move the caret to a new parapraph under it
+			ed.onKeyPress.add(function(ed, e) {
+				var n, DL, DIV, P;
+
+				if ( e.keyCode == 13 ) {
+					n = ed.selection.getNode();
+					DL = ed.dom.getParent(n, 'dl.wp-caption');
+
+					if ( DL )
+						DIV = ed.dom.getParent(DL, 'div.mceTemp');
+
+					if ( DIV ) {
+						P = ed.dom.create('p', {}, '<br>');
+						ed.dom.insertAfter( P, DIV );
+						ed.selection.select(P.firstChild);
+
+						if ( tinymce.isIE ) {
+							ed.selection.setContent('');
+						} else {
+							ed.selection.setContent('<br _moz_dirty="">');
+							ed.selection.setCursorLocation(P, 0);
+						}
+
+						ed.dom.events.cancel(e);
+						return false;
+					}
 				}
 			});
 
@@ -217,7 +239,9 @@
 			});
 
 			tinymce.dom.Event.add(editButton, 'mousedown', function(e) {
-				t._editImage();
+				var ed = tinyMCE.activeEditor;
+				ed.windowManager.bookmark = ed.selection.getBookmark('simple');
+				ed.execCommand("WP_EditImage");
 			});
 
 			dellButton = DOM.add('wp_editbtns', 'img', {
@@ -242,24 +266,6 @@
 					ed.execCommand('mceRepaint');
 					return false;
 				}
-			});
-		},
-		
-		_editImage : function() {
-			var ed = this.editor, url = this.url, el = ed.selection.getNode(), vp, H, W, cls = el.className;
-
-			if ( cls.indexOf('mceItem') != -1 || cls.indexOf('wpGallery') != -1 || el.nodeName != 'IMG' )
-				return;
-
-			vp = tinymce.DOM.getViewPort();
-			H = 680 < (vp.h - 70) ? 680 : vp.h - 70;
-			W = 650 < vp.w ? 650 : vp.w;
-
-			ed.windowManager.open({
-				file: url + '/editimage.html',
-				width: W+'px',
-				height: H+'px',
-				inline: true
 			});
 		},
 

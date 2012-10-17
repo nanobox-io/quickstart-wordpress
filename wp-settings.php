@@ -32,11 +32,15 @@ wp_check_php_mysql_versions();
 @ini_set( 'magic_quotes_runtime', 0 );
 @ini_set( 'magic_quotes_sybase',  0 );
 
-// WordPress calculates offsets from UTC.
-date_default_timezone_set( 'UTC' );
+// Set default timezone in PHP 5.
+if ( function_exists( 'date_default_timezone_set' ) )
+	date_default_timezone_set( 'UTC' );
 
 // Turn register_globals off.
 wp_unregister_GLOBALS();
+
+// Ensure these global variables do not exist so they do not interfere with WordPress.
+unset( $wp_filter, $cache_lastcommentmodified );
 
 // Standardize $_SERVER variables across setups.
 wp_fix_server_vars();
@@ -134,7 +138,6 @@ require( ABSPATH . WPINC . '/taxonomy.php' );
 require( ABSPATH . WPINC . '/update.php' );
 require( ABSPATH . WPINC . '/canonical.php' );
 require( ABSPATH . WPINC . '/shortcodes.php' );
-require( ABSPATH . WPINC . '/class-wp-embed.php' );
 require( ABSPATH . WPINC . '/media.php' );
 require( ABSPATH . WPINC . '/http.php' );
 require( ABSPATH . WPINC . '/class-http.php' );
@@ -142,10 +145,6 @@ require( ABSPATH . WPINC . '/widgets.php' );
 require( ABSPATH . WPINC . '/nav-menu.php' );
 require( ABSPATH . WPINC . '/nav-menu-template.php' );
 require( ABSPATH . WPINC . '/admin-bar.php' );
-
-require( ABSPATH . WPINC . '/class-wp-image-editor.php' );
-require( ABSPATH . WPINC . '/class-wp-image-editor-gd.php' );
-require( ABSPATH . WPINC . '/class-wp-image-editor-imagick.php' );
 
 // Load multisite-specific files.
 if ( is_multisite() ) {
@@ -255,13 +254,6 @@ $wp = new WP();
  * @since 2.8.0
  */
 $GLOBALS['wp_widget_factory'] = new WP_Widget_Factory();
-
-/**
- * WordPress User Roles
- * @global object $wp_roles
- * @since 2.0.0
- */
-$GLOBALS['wp_roles'] = new WP_Roles();
 
 do_action( 'setup_theme' );
 

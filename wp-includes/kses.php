@@ -34,11 +34,6 @@
 /**
  * You can override this in a plugin.
  *
- * The wp_kses_allowed_html filter is more powerful and supplies context.
- * CUSTOM_TAGS is not recommended and should be considered deprecated.
- *
- * @see wp_kses_allowed_html()
- *
  * @since 1.2.0
  */
 if ( ! defined( 'CUSTOM_TAGS' ) )
@@ -56,42 +51,50 @@ if ( ! CUSTOM_TAGS ) {
 	$allowedposttags = array(
 		'address' => array(),
 		'a' => array(
+			'class' => true,
 			'href' => true,
+			'id' => true,
+			'title' => true,
 			'rel' => true,
 			'rev' => true,
 			'name' => true,
 			'target' => true,
 		),
-		'abbr' => array(),
-		'acronym' => array(),
-		'area' => array(
-			'alt' => true,
-			'coords' => true,
-			'href' => true,
-			'nohref' => true,
-			'shape' => true,
-			'target' => true,
+		'abbr' => array(
+			'class' => true,
+			'title' => true,
+		),
+		'acronym' => array(
+			'title' => true,
 		),
 		'article' => array(
 			'align' => true,
+			'class' => true,
 			'dir' => true,
 			'lang' => true,
+			'style' => true,
 			'xml:lang' => true,
 		),
 		'aside' => array(
 			'align' => true,
+			'class' => true,
 			'dir' => true,
 			'lang' => true,
+			'style' => true,
 			'xml:lang' => true,
 		),
 		'b' => array(),
 		'big' => array(),
 		'blockquote' => array(
+			'id' => true,
 			'cite' => true,
+			'class' => true,
 			'lang' => true,
 			'xml:lang' => true,
 		),
-		'br' => array(),
+		'br' => array (
+			'class' => true,
+		),
 		'button' => array(
 			'disabled' => true,
 			'name' => true,
@@ -100,18 +103,24 @@ if ( ! CUSTOM_TAGS ) {
 		),
 		'caption' => array(
 			'align' => true,
+			'class' => true,
 		),
-		'cite' => array(
+		'cite' => array (
+			'class' => true,
 			'dir' => true,
 			'lang' => true,
+			'title' => true,
 		),
-		'code' => array(),
+		'code' => array (
+			'style' => true,
+		),
 		'col' => array(
 			'align' => true,
 			'char' => true,
 			'charoff' => true,
 			'span' => true,
 			'dir' => true,
+			'style' => true,
 			'valign' => true,
 			'width' => true,
 		),
@@ -121,15 +130,19 @@ if ( ! CUSTOM_TAGS ) {
 		'dd' => array(),
 		'details' => array(
 			'align' => true,
+			'class' => true,
 			'dir' => true,
 			'lang' => true,
 			'open' => true,
+			'style' => true,
 			'xml:lang' => true,
 		),
 		'div' => array(
 			'align' => true,
+			'class' => true,
 			'dir' => true,
 			'lang' => true,
+			'style' => true,
 			'xml:lang' => true,
 		),
 		'dl' => array(),
@@ -138,14 +151,18 @@ if ( ! CUSTOM_TAGS ) {
 		'fieldset' => array(),
 		'figure' => array(
 			'align' => true,
+			'class' => true,
 			'dir' => true,
 			'lang' => true,
+			'style' => true,
 			'xml:lang' => true,
 		),
 		'figcaption' => array(
 			'align' => true,
+			'class' => true,
 			'dir' => true,
 			'lang' => true,
+			'style' => true,
 			'xml:lang' => true,
 		),
 		'font' => array(
@@ -155,8 +172,10 @@ if ( ! CUSTOM_TAGS ) {
 		),
 		'footer' => array(
 			'align' => true,
+			'class' => true,
 			'dir' => true,
 			'lang' => true,
+			'style' => true,
 			'xml:lang' => true,
 		),
 		'form' => array(
@@ -170,36 +189,59 @@ if ( ! CUSTOM_TAGS ) {
 		),
 		'h1' => array(
 			'align' => true,
+			'class' => true,
+			'id'    => true,
+			'style' => true,
 		),
-		'h2' => array(
+		'h2' => array (
 			'align' => true,
+			'class' => true,
+			'id'    => true,
+			'style' => true,
 		),
-		'h3' => array(
+		'h3' => array (
 			'align' => true,
+			'class' => true,
+			'id'    => true,
+			'style' => true,
 		),
-		'h4' => array(
+		'h4' => array (
 			'align' => true,
+			'class' => true,
+			'id'    => true,
+			'style' => true,
 		),
-		'h5' => array(
+		'h5' => array (
 			'align' => true,
+			'class' => true,
+			'id'    => true,
+			'style' => true,
 		),
-		'h6' => array(
+		'h6' => array (
 			'align' => true,
+			'class' => true,
+			'id'    => true,
+			'style' => true,
 		),
 		'header' => array(
 			'align' => true,
+			'class' => true,
 			'dir' => true,
 			'lang' => true,
+			'style' => true,
 			'xml:lang' => true,
 		),
 		'hgroup' => array(
 			'align' => true,
+			'class' => true,
 			'dir' => true,
 			'lang' => true,
+			'style' => true,
 			'xml:lang' => true,
 		),
-		'hr' => array(
+		'hr' => array (
 			'align' => true,
+			'class' => true,
 			'noshade' => true,
 			'size' => true,
 			'width' => true,
@@ -209,12 +251,13 @@ if ( ! CUSTOM_TAGS ) {
 			'alt' => true,
 			'align' => true,
 			'border' => true,
+			'class' => true,
 			'height' => true,
 			'hspace' => true,
 			'longdesc' => true,
 			'vspace' => true,
 			'src' => true,
-			'usemap' => true,
+			'style' => true,
 			'width' => true,
 		),
 		'ins' => array(
@@ -228,54 +271,65 @@ if ( ! CUSTOM_TAGS ) {
 		'legend' => array(
 			'align' => true,
 		),
-		'li' => array(
+		'li' => array (
 			'align' => true,
+			'class' => true,
 		),
-		'map' => array(
-			'name' => true,
-		),
-		'menu' => array(
+		'menu' => array (
+			'class' => true,
+			'style' => true,
 			'type' => true,
 		),
 		'nav' => array(
 			'align' => true,
+			'class' => true,
 			'dir' => true,
 			'lang' => true,
+			'style' => true,
 			'xml:lang' => true,
 		),
 		'p' => array(
+			'class' => true,
 			'align' => true,
 			'dir' => true,
 			'lang' => true,
+			'style' => true,
 			'xml:lang' => true,
 		),
 		'pre' => array(
+			'style' => true,
 			'width' => true,
 		),
 		'q' => array(
 			'cite' => true,
 		),
 		's' => array(),
-		'span' => array(
+		'span' => array (
+			'class' => true,
 			'dir' => true,
 			'align' => true,
 			'lang' => true,
+			'style' => true,
+			'title' => true,
 			'xml:lang' => true,
 		),
 		'section' => array(
 			'align' => true,
+			'class' => true,
 			'dir' => true,
 			'lang' => true,
+			'style' => true,
 			'xml:lang' => true,
 		),
-		'small' => array(),
 		'strike' => array(),
 		'strong' => array(),
 		'sub' => array(),
 		'summary' => array(
 			'align' => true,
+			'class' => true,
 			'dir' => true,
 			'lang' => true,
+			'style' => true,
 			'xml:lang' => true,
 		),
 		'sup' => array(),
@@ -285,8 +339,11 @@ if ( ! CUSTOM_TAGS ) {
 			'border' => true,
 			'cellpadding' => true,
 			'cellspacing' => true,
+			'class' => true,
 			'dir' => true,
+			'id' => true,
 			'rules' => true,
+			'style' => true,
 			'summary' => true,
 			'width' => true,
 		),
@@ -303,6 +360,7 @@ if ( ! CUSTOM_TAGS ) {
 			'bgcolor' => true,
 			'char' => true,
 			'charoff' => true,
+			'class' => true,
 			'colspan' => true,
 			'dir' => true,
 			'headers' => true,
@@ -310,6 +368,7 @@ if ( ! CUSTOM_TAGS ) {
 			'nowrap' => true,
 			'rowspan' => true,
 			'scope' => true,
+			'style' => true,
 			'valign' => true,
 			'width' => true,
 		),
@@ -323,6 +382,7 @@ if ( ! CUSTOM_TAGS ) {
 		'tfoot' => array(
 			'align' => true,
 			'char' => true,
+			'class' => true,
 			'charoff' => true,
 			'valign' => true,
 		),
@@ -333,6 +393,7 @@ if ( ! CUSTOM_TAGS ) {
 			'bgcolor' => true,
 			'char' => true,
 			'charoff' => true,
+			'class' => true,
 			'colspan' => true,
 			'headers' => true,
 			'height' => true,
@@ -346,6 +407,7 @@ if ( ! CUSTOM_TAGS ) {
 			'align' => true,
 			'char' => true,
 			'charoff' => true,
+			'class' => true,
 			'valign' => true,
 		),
 		'title' => array(),
@@ -354,15 +416,21 @@ if ( ! CUSTOM_TAGS ) {
 			'bgcolor' => true,
 			'char' => true,
 			'charoff' => true,
+			'class' => true,
+			'style' => true,
 			'valign' => true,
 		),
 		'tt' => array(),
 		'u' => array(),
-		'ul' => array(
+		'ul' => array (
+			'class' => true,
+			'style' => true,
 			'type' => true,
 		),
-		'ol' => array(
+		'ol' => array (
+			'class' => true,
 			'start' => true,
+			'style' => true,
 			'type' => true,
 		),
 		'var' => array(),
@@ -389,18 +457,29 @@ if ( ! CUSTOM_TAGS ) {
 		'blockquote' => array(
 			'cite' => true,
 		),
+		//	'br' => array(),
 		'cite' => array(),
 		'code' => array(),
 		'del' => array(
 			'datetime' => true,
 		),
-		'em' => array(),
-		'i' => array(),
+		//	'dd' => array(),
+		//	'dl' => array(),
+		//	'dt' => array(),
+		'em' => array (), 'i' => array (),
+		//	'ins' => array('datetime' => array(), 'cite' => array()),
+		//	'li' => array(),
+		//	'ol' => array(),
+		//	'p' => array(),
 		'q' => array(
 			'cite' => true,
 		),
 		'strike' => array(),
 		'strong' => array(),
+		//	'sub' => array(),
+		//	'sup' => array(),
+		//	'u' => array(),
+		//	'ul' => array(),
 	);
 
 	$allowedentitynames = array(
@@ -446,11 +525,6 @@ if ( ! CUSTOM_TAGS ) {
 		'sdot',    'lceil',  'rceil',   'lfloor', 'rfloor', 'lang',
 		'rang',    'loz',    'spades',  'clubs',  'hearts', 'diams',
 	);
-
-	$allowedposttags = array_map( '_wp_add_global_attributes', $allowedposttags );
-} else {
-	$allowedtags = wp_kses_array_lc( $allowedtags );
-	$allowedposttags = wp_kses_array_lc( $allowedposttags );
 }
 
 /**
@@ -473,51 +547,15 @@ if ( ! CUSTOM_TAGS ) {
  * @param array $allowed_protocols Optional. Allowed protocol in links.
  * @return string Filtered content with only allowed HTML elements
  */
-function wp_kses( $string, $allowed_html, $allowed_protocols = array() ) {
+function wp_kses($string, $allowed_html, $allowed_protocols = array ()) {
 	if ( empty( $allowed_protocols ) )
 		$allowed_protocols = wp_allowed_protocols();
 	$string = wp_kses_no_null($string);
 	$string = wp_kses_js_entities($string);
 	$string = wp_kses_normalize_entities($string);
-	$string = wp_kses_hook($string, $allowed_html, $allowed_protocols); // WP changed the order of these funcs and added args to wp_kses_hook
-	return wp_kses_split($string, $allowed_html, $allowed_protocols);
-}
-
-/**
- * Return a list of allowed tags and attributes for a given context.
- *
- * @since 3.5.0
- *
- * @param string $context The context for which to retrieve tags. Allowed values are
- *  post | strip | data | entities or the name of a field filter such as pre_user_description.
- * @return array List of allowed tags and their allowed attributes.
- */
-function wp_kses_allowed_html( $context = '' ) {
-	global $allowedposttags, $allowedtags, $allowedentitynames;
-
-	if ( is_array( $context ) )
-		return apply_filters( 'wp_kses_allowed_html', $context, 'explicit' );
-
-	switch ( $context ) {
-		case 'post':
-			return apply_filters( 'wp_kses_allowed_html', $allowedposttags, $context );
-			break;
-		case 'user_description':
-		case 'pre_user_description':
-			$tags = $allowedtags;
-			$tags['a']['rel'] = true;
-			return apply_filters( 'wp_kses_allowed_html', $tags, $context );
-			break;
-		case 'strip':
-			return apply_filters( 'wp_kses_allowed_html', array(), $context );
-			break;
-		case 'entities':
-			return apply_filters( 'wp_kses_allowed_html', $allowedentitynames, $context);
-			break;
-		case 'data':
-		default:
-			return apply_filters( 'wp_kses_allowed_html', $allowedtags, $context );
-	}
+	$allowed_html_fixed = wp_kses_array_lc($allowed_html);
+	$string = wp_kses_hook($string, $allowed_html_fixed, $allowed_protocols); // WP changed the order of these funcs and added args to wp_kses_hook
+	return wp_kses_split($string, $allowed_html_fixed, $allowed_protocols);
 }
 
 /**
@@ -533,7 +571,7 @@ function wp_kses_allowed_html( $context = '' ) {
  * @param array $allowed_protocols Allowed protocol in links
  * @return string Filtered content through 'pre_kses' hook
  */
-function wp_kses_hook( $string, $allowed_html, $allowed_protocols ) {
+function wp_kses_hook($string, $allowed_html, $allowed_protocols) {
 	$string = apply_filters('pre_kses', $string, $allowed_html, $allowed_protocols);
 	return $string;
 }
@@ -561,7 +599,7 @@ function wp_kses_version() {
  * @param array $allowed_protocols Allowed protocols to keep
  * @return string Content with fixed HTML tags
  */
-function wp_kses_split( $string, $allowed_html, $allowed_protocols ) {
+function wp_kses_split($string, $allowed_html, $allowed_protocols) {
 	global $pass_allowed_html, $pass_allowed_protocols;
 	$pass_allowed_html = $allowed_html;
 	$pass_allowed_protocols = $allowed_protocols;
@@ -629,9 +667,6 @@ function wp_kses_split2($string, $allowed_html, $allowed_protocols) {
 	$elem = $matches[2];
 	$attrlist = $matches[3];
 
-	if ( ! is_array( $allowed_html ) )
-		$allowed_html = wp_kses_allowed_html( $allowed_html );
-
 	if ( ! isset($allowed_html[strtolower($elem)]) )
 		return '';
 	# They are using a not allowed HTML element
@@ -662,9 +697,6 @@ function wp_kses_split2($string, $allowed_html, $allowed_protocols) {
  */
 function wp_kses_attr($element, $attr, $allowed_html, $allowed_protocols) {
 	# Is there a closing XHTML slash at the end of the attributes?
-
-	if ( ! is_array( $allowed_html ) )
-		$allowed_html = wp_kses_allowed_html( $allowed_html );
 
 	$xhtml_slash = '';
 	if (preg_match('%\s*/\s*$%', $attr))
@@ -744,7 +776,7 @@ function wp_kses_attr($element, $attr, $allowed_html, $allowed_protocols) {
  * @return array List of attributes after parsing
  */
 function wp_kses_hair($attr, $allowed_protocols) {
-	$attrarr = array();
+	$attrarr = array ();
 	$mode = 0;
 	$attrname = '';
 	$uris = array('xmlns', 'profile', 'href', 'src', 'cite', 'classid', 'codebase', 'data', 'usemap', 'longdesc', 'action');
@@ -1253,8 +1285,9 @@ function _wp_kses_decode_entities_chr_hexdec( $match ) {
  * @param string $data Content to filter, expected to be escaped with slashes
  * @return string Filtered content
  */
-function wp_filter_kses( $data ) {
-	return addslashes( wp_kses( stripslashes( $data ), current_filter() ) );
+function wp_filter_kses($data) {
+	global $allowedtags;
+	return addslashes( wp_kses(stripslashes( $data ), $allowedtags) );
 }
 
 /**
@@ -1266,8 +1299,9 @@ function wp_filter_kses( $data ) {
  * @param string $data Content to filter, expected to not be escaped
  * @return string Filtered content
  */
-function wp_kses_data( $data ) {
-	return wp_kses( $data , current_filter() );
+function wp_kses_data($data) {
+	global $allowedtags;
+	return wp_kses( $data , $allowedtags );
 }
 
 /**
@@ -1277,12 +1311,14 @@ function wp_kses_data( $data ) {
  * data from forms.
  *
  * @since 2.0.0
+ * @uses $allowedposttags
  *
  * @param string $data Post content to filter, expected to be escaped with slashes
  * @return string Filtered post content with allowed HTML tags and attributes intact.
  */
 function wp_filter_post_kses($data) {
-	return addslashes ( wp_kses( stripslashes( $data ), 'post' ) );
+	global $allowedposttags;
+	return addslashes ( wp_kses(stripslashes( $data ), $allowedposttags) );
 }
 
 /**
@@ -1292,12 +1328,14 @@ function wp_filter_post_kses($data) {
  * data from forms.
  *
  * @since 2.9.0
+ * @uses $allowedposttags
  *
  * @param string $data Post content to filter
  * @return string Filtered post content with allowed HTML tags and attributes intact.
  */
 function wp_kses_post($data) {
-	return wp_kses( $data , 'post' );
+	global $allowedposttags;
+	return wp_kses( $data , $allowedposttags );
 }
 
 /**
@@ -1308,8 +1346,8 @@ function wp_kses_post($data) {
  * @param string $data Content to strip all HTML from
  * @return string Filtered content without any HTML
  */
-function wp_filter_nohtml_kses( $data ) {
-	return addslashes ( wp_kses( stripslashes( $data ), 'strip' ) );
+function wp_filter_nohtml_kses($data) {
+	return addslashes ( wp_kses(stripslashes( $data ), array()) );
 }
 
 /**
@@ -1444,30 +1482,4 @@ function safecss_filter_attr( $css, $deprecated = '' ) {
 	}
 
 	return $css;
-}
-
-/**
- * Helper function to add global attributes to a tag in the allowed html list.
- *
- * @since 3.5.0
- * @access private
- *
- * @param array $value An array of attributes.
- * @return array The array of attributes with global attributes added.
- */
-function _wp_add_global_attributes( $value ) {
-	$global_attributes = array(
-		'class' => true,
-		'id' => true,
-		'style' => true,
-		'title' => true,
-	);
-
-	if ( true === $value )
-		$value = array();
-
-	if ( is_array( $value ) )
-		return array_merge( $value, $global_attributes );
-
-	return $value;
 }

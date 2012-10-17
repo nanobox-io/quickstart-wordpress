@@ -81,16 +81,15 @@ class WP_List_Table {
 		$args = wp_parse_args( $args, array(
 			'plural' => '',
 			'singular' => '',
-			'ajax' => false,
-			'screen' => null,
+			'ajax' => false
 		) );
 
-		$this->screen = convert_to_screen( $args['screen'] );
+		$screen = get_current_screen();
 
-		add_filter( "manage_{$this->screen->id}_columns", array( &$this, 'get_columns' ), 0 );
+		add_filter( "manage_{$screen->id}_columns", array( &$this, 'get_columns' ), 0 );
 
 		if ( !$args['plural'] )
-			$args['plural'] = $this->screen->base;
+			$args['plural'] = $screen->base;
 
 		$args['plural'] = sanitize_key( $args['plural'] );
 		$args['singular'] = sanitize_key( $args['singular'] );
@@ -210,10 +209,6 @@ class WP_List_Table {
 			echo '<input type="hidden" name="orderby" value="' . esc_attr( $_REQUEST['orderby'] ) . '" />';
 		if ( ! empty( $_REQUEST['order'] ) )
 			echo '<input type="hidden" name="order" value="' . esc_attr( $_REQUEST['order'] ) . '" />';
-		if ( ! empty( $_REQUEST['post_mime_type'] ) )
-			echo '<input type="hidden" name="post_mime_type" value="' . esc_attr( $_REQUEST['post_mime_type'] ) . '" />';
-		if ( ! empty( $_REQUEST['detached'] ) )
-			echo '<input type="hidden" name="detached" value="' . esc_attr( $_REQUEST['detached'] ) . '" />';
 ?>
 <p class="search-box">
 	<label class="screen-reader-text" for="<?php echo $input_id ?>"><?php echo $text; ?>:</label>
@@ -243,8 +238,10 @@ class WP_List_Table {
 	 * @access public
 	 */
 	function views() {
+		$screen = get_current_screen();
+
 		$views = $this->get_views();
-		$views = apply_filters( 'views_' . $this->screen->id, $views );
+		$views = apply_filters( 'views_' . $screen->id, $views );
 
 		if ( empty( $views ) )
 			return;
@@ -277,10 +274,12 @@ class WP_List_Table {
 	 * @access public
 	 */
 	function bulk_actions() {
+		$screen = get_current_screen();
+
 		if ( is_null( $this->_actions ) ) {
 			$no_new_actions = $this->_actions = $this->get_bulk_actions();
 			// This filter can currently only be used to remove actions.
-			$this->_actions = apply_filters( 'bulk_actions-' . $this->screen->id, $this->_actions );
+			$this->_actions = apply_filters( 'bulk_actions-' . $screen->id, $this->_actions );
 			$this->_actions = array_intersect_assoc( $this->_actions, $no_new_actions );
 			$two = '';
 		} else {
@@ -301,7 +300,7 @@ class WP_List_Table {
 
 		echo "</select>\n";
 
-		submit_button( __( 'Apply' ), 'action', false, false, array( 'id' => "doaction$two" ) );
+		submit_button( __( 'Apply' ), 'button-secondary action', false, false, array( 'id' => "doaction$two" ) );
 		echo "\n";
 	}
 
@@ -491,7 +490,7 @@ class WP_List_Table {
 
 		$current = $this->get_pagenum();
 
-		$current_url = set_url_scheme( 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] );
+		$current_url = ( is_ssl() ? 'https://' : 'http://' ) . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 
 		$current_url = remove_query_arg( array( 'hotkeys_highlight_last', 'hotkeys_highlight_first' ), $current_url );
 
@@ -601,10 +600,12 @@ class WP_List_Table {
 		if ( isset( $this->_column_headers ) )
 			return $this->_column_headers;
 
-		$columns = get_column_headers( $this->screen );
-		$hidden = get_hidden_columns( $this->screen );
+		$screen = get_current_screen();
 
-		$_sortable = apply_filters( "manage_{$this->screen->id}_sortable_columns", $this->get_sortable_columns() );
+		$columns = get_column_headers( $screen );
+		$hidden = get_hidden_columns( $screen );
+
+		$_sortable = apply_filters( "manage_{$screen->id}_sortable_columns", $this->get_sortable_columns() );
 
 		$sortable = array();
 		foreach ( $_sortable as $id => $data ) {
@@ -646,9 +647,11 @@ class WP_List_Table {
 	 * @param bool $with_id Whether to set the id attribute or not
 	 */
 	function print_column_headers( $with_id = true ) {
+		$screen = get_current_screen();
+
 		list( $columns, $hidden, $sortable ) = $this->get_column_info();
 
-		$current_url = set_url_scheme( 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] );
+		$current_url = ( is_ssl() ? 'https://' : 'http://' ) . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 		$current_url = remove_query_arg( 'paged', $current_url );
 
 		if ( isset( $_GET['orderby'] ) )
@@ -660,13 +663,6 @@ class WP_List_Table {
 			$current_order = 'desc';
 		else
 			$current_order = 'asc';
-
-		if ( ! empty( $columns['cb'] ) ) {
-			static $cb_counter = 1;
-			$columns['cb'] = '<label class="screen-reader-text" for="cb-select-all-' . $cb_counter . '">' . __( 'Select All' ) . '</label>'
-				. '<input id="cb-select-all-' . $cb_counter . '" type="checkbox" />';
-			$cb_counter++;
-		}
 
 		foreach ( $columns as $column_key => $column_display_name ) {
 			$class = array( 'manage-column', "column-$column_key" );
@@ -907,11 +903,13 @@ class WP_List_Table {
 	 * @access private
 	 */
 	function _js_vars() {
+		$current_screen = get_current_screen();
+
 		$args = array(
 			'class'  => get_class( $this ),
 			'screen' => array(
-				'id'   => $this->screen->id,
-				'base' => $this->screen->base,
+				'id'   => $current_screen->id,
+				'base' => $current_screen->base,
 			)
 		);
 

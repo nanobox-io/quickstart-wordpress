@@ -12,17 +12,17 @@ class WP_Users_List_Table extends WP_List_Table {
 	var $site_id;
 	var $is_site_users;
 
-	function __construct( $args = array() ) {
-		parent::__construct( array(
-			'singular' => 'user',
-			'plural'   => 'users',
-			'screen'   => isset( $args['screen'] ) ? $args['screen'] : null,
-		) );
-
-		$this->is_site_users = 'site-users-network' == $this->screen->id;
+	function __construct() {
+		$screen = get_current_screen();
+		$this->is_site_users = 'site-users-network' == $screen->id;
 
 		if ( $this->is_site_users )
 			$this->site_id = isset( $_REQUEST['id'] ) ? intval( $_REQUEST['id'] ) : 0;
+
+		parent::__construct( array(
+			'singular' => 'user',
+			'plural'   => 'users'
+		) );
 	}
 
 	function ajax_user_can() {
@@ -35,7 +35,7 @@ class WP_Users_List_Table extends WP_List_Table {
 	function prepare_items() {
 		global $role, $usersearch;
 
-		$usersearch = isset( $_REQUEST['s'] ) ? trim( $_REQUEST['s'] ) : '';
+		$usersearch = isset( $_REQUEST['s'] ) ? $_REQUEST['s'] : '';
 
 		$role = isset( $_REQUEST['role'] ) ? $_REQUEST['role'] : '';
 
@@ -145,7 +145,7 @@ class WP_Users_List_Table extends WP_List_Table {
 			<option value=''><?php _e( 'Change role to&hellip;' ) ?></option>
 			<?php wp_dropdown_roles(); ?>
 		</select>
-		<?php submit_button( __( 'Change' ), 'small', 'changeit', false ); ?>
+		<?php submit_button( __( 'Change' ), 'secondary', 'changeit', false ); ?>
 	</div>
 <?php
 	}
@@ -218,7 +218,7 @@ class WP_Users_List_Table extends WP_List_Table {
 		global $wp_roles;
 
 		if ( !( is_object( $user_object ) && is_a( $user_object, 'WP_User' ) ) )
-			$user_object = get_userdata( (int) $user_object );
+			$user_object = new WP_User( (int) $user_object );
 		$user_object->filter = 'display';
 		$email = $user_object->user_email;
 
@@ -231,7 +231,12 @@ class WP_Users_List_Table extends WP_List_Table {
 		// Check if the user for this row is editable
 		if ( current_user_can( 'list_users' ) ) {
 			// Set up the user editing link
-			$edit_link = esc_url( add_query_arg( 'wp_http_referer', urlencode( stripslashes( $_SERVER['REQUEST_URI'] ) ), get_edit_user_link( $user_object->ID ) ) );
+			// TODO: make profile/user-edit determination a separate function
+			if ( get_current_user_id() == $user_object->ID ) {
+				$edit_link = 'profile.php';
+			} else {
+				$edit_link = esc_url( add_query_arg( 'wp_http_referer', urlencode( stripslashes( $_SERVER['REQUEST_URI'] ) ), "user-edit.php?user_id=$user_object->ID" ) );
+			}
 
 			// Set up the hover actions for this user
 			$actions = array();
@@ -251,8 +256,7 @@ class WP_Users_List_Table extends WP_List_Table {
 			$edit .= $this->row_actions( $actions );
 
 			// Set up the checkbox ( because the user is editable, otherwise its empty )
-			$checkbox = '<label class="screen-reader-text" for="cb-select-' . $user_object->ID . '">' . sprintf( __( 'Select %s' ), $user_object->user_login ) . '</label>'
-						. "<input type='checkbox' name='users[]' id='user_{$user_object->ID}' class='$role' value='{$user_object->ID}' />";
+			$checkbox = "<input type='checkbox' name='users[]' id='user_{$user_object->ID}' class='$role' value='{$user_object->ID}' />";
 
 		} else {
 			$edit = '<strong>' . $user_object->user_login . '</strong>';

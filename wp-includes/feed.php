@@ -140,7 +140,6 @@ function the_title_rss() {
  * @see get_the_content()
  *
  * @param string $feed_type The type of feed. rss2 | atom | rss | rdf
- * @return string The filtered content.
  */
 function get_the_content_feed($feed_type = null) {
 	if ( !$feed_type )
@@ -488,7 +487,12 @@ function prep_atom_text_construct($data) {
  */
 function self_link() {
 	$host = @parse_url(home_url());
-	echo esc_url( set_url_scheme( 'http://' . $host['host'] . stripslashes($_SERVER['REQUEST_URI']) ) );
+	$host = $host['host'];
+	echo esc_url(
+		( is_ssl() ? 'https' : 'http' ) . '://'
+		. $host
+		. stripslashes($_SERVER['REQUEST_URI'])
+		);
 }
 
 /**
@@ -527,18 +531,10 @@ function fetch_feed($url) {
 	require_once (ABSPATH . WPINC . '/class-feed.php');
 
 	$feed = new SimplePie();
-
-	if ( version_compare( SIMPLEPIE_VERSION, '1.3-dev', '>' ) ) {
-		$feed->set_cache_location( 'wp-transient' );
-		$feed->registry->register( 'Cache', 'WP_Feed_Cache_Transient' );
-		$feed->registry->register( 'File', 'WP_SimplePie_File' );
-	} else {
-		$feed->set_cache_class( 'WP_Feed_Cache' );
-		$feed->set_file_class( 'WP_SimplePie_File' );
-	}
-
 	$feed->set_feed_url($url);
-	$feed->set_cache_duration( apply_filters( 'wp_feed_cache_transient_lifetime', 12 * HOUR_IN_SECONDS, $url ) );
+	$feed->set_cache_class('WP_Feed_Cache');
+	$feed->set_file_class('WP_SimplePie_File');
+	$feed->set_cache_duration(apply_filters('wp_feed_cache_transient_lifetime', 43200, $url));
 	do_action_ref_array( 'wp_feed_options', array( &$feed, $url ) );
 	$feed->init();
 	$feed->handle_content_type();

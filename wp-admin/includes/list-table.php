@@ -14,10 +14,9 @@
  * @since 3.1.0
  *
  * @param string $class The type of the list table, which is the class name.
- * @param array $args Optional. Arguments to pass to the class. Accepts 'screen'.
  * @return object|bool Object on success, false if the class does not exist.
  */
-function _get_list_table( $class, $args = array() ) {
+function _get_list_table( $class ) {
 	$core_classes = array(
 		//Site Admin
 		'WP_Posts_List_Table' => 'posts',
@@ -40,13 +39,7 @@ function _get_list_table( $class, $args = array() ) {
 	if ( isset( $core_classes[ $class ] ) ) {
 		foreach ( (array) $core_classes[ $class ] as $required )
 			require_once( ABSPATH . 'wp-admin/includes/class-wp-' . $required . '-list-table.php' );
-
-		if ( isset( $args['screen'] ) )
-			$args['screen'] = convert_to_screen( $args['screen'] );
-		else
-			$args['screen'] = get_current_screen();
-
-		return new $class( $args );
+		return new $class;
 	}
 
 	return false;
