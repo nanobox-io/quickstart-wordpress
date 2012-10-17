@@ -16,12 +16,7 @@ if ( !current_user_can('export') )
 require_once('./includes/export.php');
 $title = __('Export');
 
-/**
- * Display JavaScript on the page.
- *
- * @since 3.5.0
- */
-function export_add_js() {
+function add_js() {
 ?>
 <script type="text/javascript">
 //<![CDATA[
@@ -41,7 +36,7 @@ function export_add_js() {
 </script>
 <?php
 }
-add_action( 'admin_head', 'export_add_js' );
+add_action( 'admin_head', 'add_js' );
 
 get_current_screen()->add_help_tab( array(
 	'id'      => 'overview',
@@ -209,7 +204,7 @@ function export_date_options( $post_type = 'post' ) {
 <p><label><input type="radio" name="content" value="<?php echo esc_attr( $post_type->name ); ?>" /> <?php echo esc_html( $post_type->label ); ?></label></p>
 <?php endforeach; ?>
 
-<?php submit_button( __('Download Export File') ); ?>
+<?php submit_button( __('Download Export File'), 'secondary' ); ?>
 </form>
 </div>
 

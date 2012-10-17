@@ -85,12 +85,8 @@ $sendback = wp_get_referer();
 if ( ! $sendback ||
      strpos( $sendback, 'post.php' ) !== false ||
      strpos( $sendback, 'post-new.php' ) !== false ) {
-	if ( 'attachment' == $post_type ) {
-		$sendback = admin_url( 'upload.php' );
-	} else {
-		$sendback = admin_url( 'edit.php' );
-		$sendback .= ( ! empty( $post_type ) ) ? '?post_type=' . $post_type : '';
-	}
+	$sendback = admin_url( 'edit.php' );
+	$sendback .= ( ! empty( $post_type ) ) ? '?post_type=' . $post_type : '';
 } else {
 	$sendback = remove_query_arg( array('trashed', 'untrashed', 'deleted', 'ids'), $sendback );
 }
@@ -152,10 +148,6 @@ case 'edit':
 		$parent_file = "edit.php";
 		$submenu_file = "edit.php";
 		$post_new_file = "post-new.php";
-	} elseif ( 'attachment' == $post_type ) {
-		$parent_file = 'upload.php';
-		$submenu_file = 'upload.php';
-		$post_new_file = 'media-new.php';
 	} else {
 		if ( isset( $post_type_object ) && $post_type_object->show_in_menu && $post_type_object->show_in_menu !== true )
 			$parent_file = $post_type_object->show_in_menu;
@@ -173,7 +165,7 @@ case 'edit':
 	}
 
 	$title = $post_type_object->labels->edit_item;
-	$post = get_post($post_id, OBJECT, 'edit');
+	$post = get_post_to_edit($post_id);
 
 	if ( post_type_supports($post_type, 'comments') ) {
 		wp_enqueue_script('admin-comments');
@@ -185,7 +177,7 @@ case 'edit':
 	break;
 
 case 'editattachment':
-	check_admin_referer('update-post_' . $post_id);
+	check_admin_referer('update-attachment_' . $post_id);
 
 	// Don't let these be changed
 	unset($_POST['guid']);
@@ -198,7 +190,7 @@ case 'editattachment':
 	wp_update_attachment_metadata( $post_id, $newmeta );
 
 case 'editpost':
-	check_admin_referer('update-post_' . $post_id);
+	check_admin_referer('update-' . $post_type . '_' . $post_id);
 
 	$post_id = edit_post();
 
@@ -208,9 +200,9 @@ case 'editpost':
 	break;
 
 case 'trash':
-	check_admin_referer('trash-post_' . $post_id);
+	check_admin_referer('trash-' . $post_type . '_' . $post_id);
 
-	$post = get_post($post_id);
+	$post = & get_post($post_id);
 
 	if ( !current_user_can($post_type_object->cap->delete_post, $post_id) )
 		wp_die( __('You are not allowed to move this item to the Trash.') );
@@ -223,7 +215,7 @@ case 'trash':
 	break;
 
 case 'untrash':
-	check_admin_referer('untrash-post_' . $post_id);
+	check_admin_referer('untrash-' . $post_type . '_' . $post_id);
 
 	if ( !current_user_can($post_type_object->cap->delete_post, $post_id) )
 		wp_die( __('You are not allowed to move this item out of the Trash.') );
@@ -236,7 +228,7 @@ case 'untrash':
 	break;
 
 case 'delete':
-	check_admin_referer('delete-post_' . $post_id);
+	check_admin_referer('delete-' . $post_type . '_' . $post_id);
 
 	if ( !current_user_can($post_type_object->cap->delete_post, $post_id) )
 		wp_die( __('You are not allowed to delete this item.') );

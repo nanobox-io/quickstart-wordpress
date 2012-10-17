@@ -106,7 +106,7 @@ iespell_desc:"Run spell checking",
 download:"ieSpell not detected. Do you want to install it now?"
 },
 advhr:{
-advhr_desc:"Horizontal rule"
+advhr_desc:"Horizontale rule"
 },
 emotions:{
 emotions_desc:"Emotions"
@@ -278,7 +278,7 @@ blockquote_desc:"Blockquote (Alt + Shift + Q)",
 clipboard_msg:"Copy/Cut/Paste is not available in Mozilla and Firefox.",
 path:"Path",
 newdocument:"Are you sure you want to clear all contents?",
-toolbar_focus:"Jump to tool buttons - Alt+Q, Jump to editor - Alt-Z, Jump to element path - Alt-X",
+toolbar_focus:"Jump to tool buttons - Alt + Q, Jump to editor - Alt-Z, Jump to element path - Alt-X",
 more_colors:"More colors",
 shortcuts_desc:"Accessibility Help",
 help_shortcut:" Press ALT F10 for toolbar. Press ALT 0 for help.",
@@ -400,7 +400,7 @@ playcount:"Play count",
 rate:"Rate",
 uimode:"UI Mode",
 flash_options:"Flash options",
-qt_options:"QuickTime options",
+qt_options:"Quicktime options",
 wmp_options:"Windows media player options",
 rmp_options:"Real media player options",
 shockwave_options:"Shockwave options",
@@ -463,8 +463,7 @@ add_image:"Add an Image",
 add_video:"Add Video",
 add_audio:"Add Audio",
 editgallery:"Edit Gallery",
-delgallery:"Delete Gallery",
-wp_fullscreen_desc:"Distraction Free Writing mode (Alt + Shift + W)"
+delgallery:"Delete Gallery"
 });
 
 tinyMCE.addI18n("en.wpeditimage",{

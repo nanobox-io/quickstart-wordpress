@@ -11,44 +11,43 @@ class WP_Terms_List_Table extends WP_List_Table {
 
 	var $callback_args;
 
-	function __construct( $args = array() ) {
-		global $post_type, $taxonomy, $action, $tax;
+	function __construct() {
+		global $post_type, $taxonomy, $tax;
 
-		parent::__construct( array(
-			'plural' => 'tags',
-			'singular' => 'tag',
-			'screen' => isset( $args['screen'] ) ? $args['screen'] : null,
-		) );
-
-		$action    = $this->screen->action;
-		$post_type = $this->screen->post_type;
-		$taxonomy  = $this->screen->taxonomy;
+		wp_reset_vars( array( 'action', 'taxonomy', 'post_type' ) );
 
 		if ( empty( $taxonomy ) )
 			$taxonomy = 'post_tag';
 
-		if ( ! taxonomy_exists( $taxonomy ) )
+		if ( !taxonomy_exists( $taxonomy ) )
 			wp_die( __( 'Invalid taxonomy' ) );
 
 		$tax = get_taxonomy( $taxonomy );
 
-		// @todo Still needed? Maybe just the show_ui part.
 		if ( empty( $post_type ) || !in_array( $post_type, get_post_types( array( 'show_ui' => true ) ) ) )
 			$post_type = 'post';
 
+		parent::__construct( array(
+			'plural' => 'tags',
+			'singular' => 'tag',
+		) );
 	}
 
 	function ajax_user_can() {
-		return current_user_can( get_taxonomy( $this->screen->taxonomy )->cap->manage_terms );
+		global $tax;
+
+		return current_user_can( $tax->cap->manage_terms );
 	}
 
 	function prepare_items() {
-		$tags_per_page = $this->get_items_per_page( 'edit_' . $this->screen->taxonomy . '_per_page' );
+		global $taxonomy;
 
-		if ( 'post_tag' == $this->screen->taxonomy ) {
+		$tags_per_page = $this->get_items_per_page( 'edit_' . $taxonomy . '_per_page' );
+
+		if ( 'post_tag' == $taxonomy ) {
 			$tags_per_page = apply_filters( 'edit_tags_per_page', $tags_per_page );
 			$tags_per_page = apply_filters( 'tagsperpage', $tags_per_page ); // Old filter
-		} elseif ( 'category' == $this->screen->taxonomy ) {
+		} elseif ( 'category' == $taxonomy ) {
 			$tags_per_page = apply_filters( 'edit_categories_per_page', $tags_per_page ); // Old filter
 		}
 
@@ -69,7 +68,7 @@ class WP_Terms_List_Table extends WP_List_Table {
 		$this->callback_args = $args;
 
 		$this->set_pagination_args( array(
-			'total_items' => wp_count_terms( $this->screen->taxonomy, compact( 'search' ) ),
+			'total_items' => wp_count_terms( $taxonomy, compact( 'search' ) ),
 			'per_page' => $tags_per_page,
 		) );
 	}
@@ -94,6 +93,8 @@ class WP_Terms_List_Table extends WP_List_Table {
 	}
 
 	function get_columns() {
+		global $taxonomy, $post_type;
+
 		$columns = array(
 			'cb'          => '<input type="checkbox" />',
 			'name'        => _x( 'Name', 'term name' ),
@@ -101,10 +102,10 @@ class WP_Terms_List_Table extends WP_List_Table {
 			'slug'        => __( 'Slug' ),
 		);
 
-		if ( 'link_category' == $this->screen->taxonomy ) {
+		if ( 'link_category' == $taxonomy ) {
 			$columns['links'] = __( 'Links' );
 		} else {
-			$post_type_object = get_post_type_object( $this->screen->post_type );
+			$post_type_object = get_post_type_object( $post_type );
 			$columns['posts'] = $post_type_object ? $post_type_object->labels->name : __( 'Posts' );
 		}
 
@@ -122,7 +123,7 @@ class WP_Terms_List_Table extends WP_List_Table {
 	}
 
 	function display_rows_or_placeholder() {
-		$taxonomy = $this->screen->taxonomy;
+		global $taxonomy;
 
 		$args = wp_parse_args( $this->callback_args, array(
 			'page' => 1,
@@ -230,25 +231,25 @@ class WP_Terms_List_Table extends WP_List_Table {
 	}
 
 	function column_cb( $tag ) {
-		$default_term = get_option( 'default_' . $this->screen->taxonomy );
+		global $taxonomy, $tax;
 
-		if ( current_user_can( get_taxonomy( $this->screen->taxonomy )->cap->delete_terms ) && $tag->term_id != $default_term )
-			return '<label class="screen-reader-text" for="cb-select-' . $tag->term_id . '">' . sprintf( __( 'Select %s' ), $tag->name ) . '</label>'
-				. '<input type="checkbox" name="delete_tags[]" value="' . $tag->term_id . '" id="cb-select-' . $tag->term_id . '" />';
+		$default_term = get_option( 'default_' . $taxonomy );
 
-		return '&nbsp;';
+		if ( current_user_can( $tax->cap->delete_terms ) && $tag->term_id != $default_term )
+			return '<input type="checkbox" name="delete_tags[]" value="' . $tag->term_id . '" />';
+		else
+			return '&nbsp;';
 	}
 
 	function column_name( $tag ) {
-		$taxonomy = $this->screen->taxonomy;
-		$tax = get_taxonomy( $taxonomy );
+		global $taxonomy, $tax, $post_type;
 
 		$default_term = get_option( 'default_' . $taxonomy );
 
 		$pad = str_repeat( '&#8212; ', max( 0, $this->level ) );
 		$name = apply_filters( 'term_name', $pad . ' ' . $tag->name, $tag );
 		$qe_data = get_term( $tag->term_id, $taxonomy, OBJECT, 'edit' );
-		$edit_link = esc_url( get_edit_term_link( $tag->term_id, $taxonomy, $this->screen->post_type ) );
+		$edit_link = esc_url( get_edit_term_link( $tag->term_id, $taxonomy, $post_type ) );
 
 		$out = '<strong><a class="row-title" href="' . $edit_link . '" title="' . esc_attr( sprintf( __( 'Edit &#8220;%s&#8221;' ), $name ) ) . '">' . $name . '</a></strong><br />';
 
@@ -282,11 +283,13 @@ class WP_Terms_List_Table extends WP_List_Table {
 	}
 
 	function column_posts( $tag ) {
+		global $taxonomy, $post_type;
+
 		$count = number_format_i18n( $tag->count );
 
-		$tax = get_taxonomy( $this->screen->taxonomy );
+		$tax = get_taxonomy( $taxonomy );
 
-		$ptype_object = get_post_type_object( $this->screen->post_type );
+		$ptype_object = get_post_type_object( $post_type );
 		if ( ! $ptype_object->show_ui )
 			return $count;
 
@@ -296,11 +299,8 @@ class WP_Terms_List_Table extends WP_List_Table {
 			$args = array( 'taxonomy' => $tax->name, 'term' => $tag->slug );
 		}
 
-		if ( 'post' != $this->screen->post_type )
-			$args['post_type'] = $this->screen->post_type;
-
-		if ( 'attachment' == $this->screen->post_type )
-			return "<a href='" . esc_url ( add_query_arg( $args, 'upload.php' ) ) . "'>$count</a>";
+		if ( 'post' != $post_type )
+			$args['post_type'] = $post_type;
 
 		return "<a href='" . esc_url ( add_query_arg( $args, 'edit.php' ) ) . "'>$count</a>";
 	}
@@ -313,7 +313,9 @@ class WP_Terms_List_Table extends WP_List_Table {
 	}
 
 	function column_default( $tag, $column_name ) {
-		return apply_filters( "manage_{$this->screen->taxonomy}_custom_column", '', $column_name, $tag->term_id );
+		$screen = get_current_screen();
+
+		return apply_filters( "manage_{$screen->taxonomy}_custom_column", '', $column_name, $tag->term_id );
 	}
 
 	/**
@@ -322,7 +324,7 @@ class WP_Terms_List_Table extends WP_List_Table {
 	 * @since 3.1.0
 	 */
 	function inline_edit() {
-		$tax = get_taxonomy( $this->screen->taxonomy );
+		global $post_type, $tax;
 
 		if ( ! current_user_can( $tax->cap->edit_terms ) )
 			return;
@@ -355,7 +357,7 @@ class WP_Terms_List_Table extends WP_List_Table {
 			if ( isset( $core_columns[$column_name] ) )
 				continue;
 
-			do_action( 'quick_edit_custom_box', $column_name, 'edit-tags', $this->screen->taxonomy );
+			do_action( 'quick_edit_custom_box', $column_name, 'edit-tags', $tax->name );
 		}
 
 	?>
@@ -364,11 +366,11 @@ class WP_Terms_List_Table extends WP_List_Table {
 			<a accesskey="c" href="#inline-edit" title="<?php esc_attr_e( 'Cancel' ); ?>" class="cancel button-secondary alignleft"><?php _e( 'Cancel' ); ?></a>
 			<?php $update_text = $tax->labels->update_item; ?>
 			<a accesskey="s" href="#inline-edit" title="<?php echo esc_attr( $update_text ); ?>" class="save button-primary alignright"><?php echo $update_text; ?></a>
-			<span class="spinner"></span>
+			<img class="waiting" style="display:none;" src="<?php echo esc_url( admin_url( 'images/wpspin_light.gif' ) ); ?>" alt="" />
 			<span class="error" style="display:none;"></span>
 			<?php wp_nonce_field( 'taxinlineeditnonce', '_inline_edit', false ); ?>
-			<input type="hidden" name="taxonomy" value="<?php echo esc_attr( $this->screen->taxonomy ); ?>" />
-			<input type="hidden" name="post_type" value="<?php echo esc_attr( $this->screen->post_type ); ?>" />
+			<input type="hidden" name="taxonomy" value="<?php echo esc_attr( $tax->name ); ?>" />
+			<input type="hidden" name="post_type" value="<?php echo esc_attr( $post_type ); ?>" />
 			<br class="clear" />
 		</p>
 		</td></tr>

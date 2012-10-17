@@ -21,7 +21,7 @@ class WP_Comments_List_Table extends WP_List_Table {
 
 	var $pending_count = array();
 
-	function __construct( $args = array() ) {
+	function __construct() {
 		global $post_id;
 
 		$post_id = isset( $_REQUEST['p'] ) ? absint( $_REQUEST['p'] ) : 0;
@@ -33,7 +33,6 @@ class WP_Comments_List_Table extends WP_List_Table {
 			'plural' => 'comments',
 			'singular' => 'comment',
 			'ajax' => true,
-			'screen' => isset( $args['screen'] ) ? $args['screen'] : null,
 		) );
 	}
 
@@ -82,8 +81,7 @@ class WP_Comments_List_Table extends WP_List_Table {
 
 		$status_map = array(
 			'moderated' => 'hold',
-			'approved' => 'approve',
-			'all' => '',
+			'approved' => 'approve'
 		);
 
 		$args = array(
@@ -226,14 +224,13 @@ class WP_Comments_List_Table extends WP_List_Table {
 			?>
 			</select>
 <?php
-			do_action( 'restrict_manage_comments' );
-			submit_button( __( 'Filter' ), 'button', false, false, array( 'id' => 'post-query-submit' ) );
+			submit_button( __( 'Filter' ), 'secondary', false, false, array( 'id' => 'post-query-submit' ) );
 		}
 
 		if ( ( 'spam' == $comment_status || 'trash' == $comment_status ) && current_user_can( 'moderate_comments' ) ) {
 			wp_nonce_field( 'bulk-destroy', '_destroy_nonce' );
 			$title = ( 'spam' == $comment_status ) ? esc_attr__( 'Empty Spam' ) : esc_attr__( 'Empty Trash' );
-			submit_button( $title, 'apply', 'delete_all', false );
+			submit_button( $title, 'button-secondary apply', 'delete_all', false );
 		}
 		do_action( 'manage_comments_nav', $comment_status );
 		echo '</div>';
@@ -320,16 +317,12 @@ class WP_Comments_List_Table extends WP_List_Table {
 	}
 
 	function column_cb( $comment ) {
-		if ( $this->user_can ) { ?>
-		<label class="screen-reader-text" for="cb-select-<?php echo $comment->comment_ID; ?>"><?php _e( 'Select comment' ); ?></label>
-		<input id="cb-select-<?php echo $comment->comment_ID; ?>" type="checkbox" name="delete_comments[]" value="<?php echo $comment->comment_ID; ?>" />
-		<?php
-		}
+		if ( $this->user_can )
+			echo "<input type='checkbox' name='delete_comments[]' value='$comment->comment_ID' />";
 	}
 
 	function column_comment( $comment ) {
-		global $comment_status;
-		$post = get_post();
+		global $post, $comment_status;
 
 		$user_can = $this->user_can;
 
@@ -337,7 +330,7 @@ class WP_Comments_List_Table extends WP_List_Table {
 		$the_comment_status = wp_get_comment_status( $comment->comment_ID );
 
 		$ptime = date( 'G', strtotime( $comment->comment_date ) );
-		if ( ( abs( time() - $ptime ) ) < DAY_IN_SECONDS )
+		if ( ( abs( time() - $ptime ) ) < 86400 )
 			$ptime = sprintf( __( '%s ago' ), human_time_diff( $ptime ) );
 		else
 			$ptime = mysql2date( __( 'Y/m/d \a\t g:i A' ), $comment->comment_date );
@@ -483,7 +476,7 @@ class WP_Comments_List_Table extends WP_List_Table {
 	}
 
 	function column_response( $comment ) {
-		$post = get_post();
+		global $post;
 
 		if ( isset( $this->pending_count[$post->ID] ) ) {
 			$pending_comments = $this->pending_count[$post->ID];

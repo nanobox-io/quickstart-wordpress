@@ -108,7 +108,7 @@ class Custom_Background {
 		add_thickbox();
 		wp_enqueue_script('media-upload');
 		wp_enqueue_script('custom-background');
-		wp_enqueue_style('wp-color-picker');
+		wp_enqueue_style('farbtastic');
 	}
 
 	/**
@@ -260,7 +260,7 @@ if ( get_background_image() ) {
 		<input type="file" id="upload" name="import" />
 		<input type="hidden" name="action" value="save" />
 		<?php wp_nonce_field( 'custom-background-upload', '_wpnonce-custom-background-upload' ); ?>
-		<?php submit_button( __( 'Upload' ), 'small', 'submit', false ); ?>
+		<?php submit_button( __( 'Upload' ), 'button', 'submit', false ); ?>
 	</p>
 	<?php
 		$image_library_url = get_upload_iframe_src( 'image', null, 'library' );
@@ -327,12 +327,11 @@ if ( get_background_image() ) {
 <tr valign="top">
 <th scope="row"><?php _e( 'Background Color' ); ?></th>
 <td><fieldset><legend class="screen-reader-text"><span><?php _e( 'Background Color' ); ?></span></legend>
-<?php
-$default_color = '';
-if ( current_theme_supports( 'custom-background', 'default-color' ) )
-	$default_color = ' data-default-color="#' . esc_attr( get_theme_support( 'custom-background', 'default-color' ) ) . '"';
-?>
-<input type="text" name="background-color" id="background-color" value="#<?php echo esc_attr( get_background_color() ); ?>"<?php echo $default_color ?> />
+<?php $show_clear = get_theme_mod('background_color') ? '' : ' style="display:none"'; ?>
+<input type="text" name="background-color" id="background-color" value="#<?php echo esc_attr(get_background_color()) ?>" />
+<a class="hide-if-no-js" href="#" id="pickcolor"><?php _e('Select a Color'); ?></a> <span<?php echo $show_clear; ?> class="hide-if-no-js" id="clearcolor"> (<a href="#"><?php current_theme_supports( 'custom-background', 'default-color' ) ? _e( 'Default' ) : _e( 'Clear' ); ?></a>)</span>
+<input type="hidden" id="defaultcolor" value="<?php if ( current_theme_supports( 'custom-background', 'default-color' ) ) echo '#' . esc_attr( get_theme_support( 'custom-background', 'default-color' ) ); ?>" />
+<div id="colorPickerDiv" style="z-index: 100; background:#eee; border:1px solid #ccc; position:absolute; display:none;"></div>
 </fieldset></td>
 </tr>
 </tbody>

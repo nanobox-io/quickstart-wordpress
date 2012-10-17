@@ -22,7 +22,7 @@
 function wp_schedule_single_event( $timestamp, $hook, $args = array()) {
 	// don't schedule a duplicate if there's already an identical event due in the next 10 minutes
 	$next = wp_next_scheduled($hook, $args);
-	if ( $next && $next <= $timestamp + 10 * MINUTE_IN_SECONDS )
+	if ( $next && $next <= $timestamp + 600 )
 		return;
 
 	$crons = _get_cron_array();
@@ -192,10 +192,10 @@ function wp_next_scheduled( $hook, $args = array() ) {
  *
  * @return null Cron could not be spawned, because it is not needed to run.
  */
-function spawn_cron( $gmt_time = 0 ) {
+function spawn_cron( $local_time = 0 ) {
 
-	if ( ! $gmt_time )
-		$gmt_time = microtime( true );
+	if ( ! $local_time )
+		$local_time = microtime( true );
 
 	if ( defined('DOING_CRON') || isset($_GET['doing_wp_cron']) )
 		return;
@@ -206,11 +206,11 @@ function spawn_cron( $gmt_time = 0 ) {
 	*/
 	$lock = get_transient('doing_cron');
 
-	if ( $lock > $gmt_time + 10 * MINUTE_IN_SECONDS )
+	if ( $lock > $local_time + 10*60 )
 		$lock = 0;
 
 	// don't run if another process is currently running it or more than once every 60 sec.
-	if ( $lock + WP_CRON_LOCK_TIMEOUT > $gmt_time )
+	if ( $lock + WP_CRON_LOCK_TIMEOUT > $local_time )
 		return;
 
 	//sanity check
@@ -219,14 +219,14 @@ function spawn_cron( $gmt_time = 0 ) {
 		return;
 
 	$keys = array_keys( $crons );
-	if ( isset($keys[0]) && $keys[0] > $gmt_time )
+	if ( isset($keys[0]) && $keys[0] > $local_time )
 		return;
 
 	if ( defined('ALTERNATE_WP_CRON') && ALTERNATE_WP_CRON ) {
 		if ( !empty($_POST) || defined('DOING_AJAX') )
 			return;
 
-		$doing_wp_cron = sprintf( '%.22F', $gmt_time );
+		$doing_wp_cron = sprintf( '%.22F', $local_time );
 		set_transient( 'doing_cron', $doing_wp_cron );
 
 		ob_start();
@@ -241,16 +241,11 @@ function spawn_cron( $gmt_time = 0 ) {
 		return;
 	}
 
-	$doing_wp_cron = sprintf( '%.22F', $gmt_time );
+	$doing_wp_cron = sprintf( '%.22F', $local_time );
 	set_transient( 'doing_cron', $doing_wp_cron );
 
-	$cron_request = apply_filters( 'cron_request', array(
-		'url' => site_url( 'wp-cron.php?doing_wp_cron=' . $doing_wp_cron ),
-		'key' => $doing_wp_cron,
-		'args' => array( 'timeout' => 0.01, 'blocking' => false, 'sslverify' => apply_filters( 'https_local_ssl_verify', true ) )
-	) );
-
-	wp_remote_post( $cron_request['url'], $cron_request['args'] );
+	$cron_url = site_url( 'wp-cron.php?doing_wp_cron=' . $doing_wp_cron );
+	wp_remote_post( $cron_url, array( 'timeout' => 0.01, 'blocking' => false, 'sslverify' => apply_filters( 'https_local_ssl_verify', true ) ) );
 }
 
 /**
@@ -269,18 +264,18 @@ function wp_cron() {
 	if ( false === $crons = _get_cron_array() )
 		return;
 
-	$gmt_time = microtime( true );
+	$local_time = microtime( true );
 	$keys = array_keys( $crons );
-	if ( isset($keys[0]) && $keys[0] > $gmt_time )
+	if ( isset($keys[0]) && $keys[0] > $local_time )
 		return;
 
 	$schedules = wp_get_schedules();
 	foreach ( $crons as $timestamp => $cronhooks ) {
-		if ( $timestamp > $gmt_time ) break;
+		if ( $timestamp > $local_time ) break;
 		foreach ( (array) $cronhooks as $hook => $args ) {
 			if ( isset($schedules[$hook]['callback']) && !call_user_func( $schedules[$hook]['callback'] ) )
 				continue;
-			spawn_cron( $gmt_time );
+			spawn_cron( $local_time );
 			break 2;
 		}
 	}
@@ -318,9 +313,9 @@ function wp_cron() {
  */
 function wp_get_schedules() {
 	$schedules = array(
-		'hourly'     => array( 'interval' => HOUR_IN_SECONDS,      'display' => __( 'Once Hourly' ) ),
-		'twicedaily' => array( 'interval' => 12 * HOUR_IN_SECONDS, 'display' => __( 'Twice Daily' ) ),
-		'daily'      => array( 'interval' => DAY_IN_SECONDS,       'display' => __( 'Once Daily' ) ),
+		'hourly' => array( 'interval' => 3600, 'display' => __('Once Hourly') ),
+		'twicedaily' => array( 'interval' => 43200, 'display' => __('Twice Daily') ),
+		'daily' => array( 'interval' => 86400, 'display' => __('Once Daily') ),
 	);
 	return array_merge( apply_filters( 'cron_schedules', array() ), $schedules );
 }

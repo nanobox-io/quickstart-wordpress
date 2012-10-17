@@ -70,6 +70,11 @@ include('./admin-header.php');
 
 <table class="form-table">
 <tr valign="top">
+<th scope="row"><label for="default_post_edit_rows"> <?php _e('Size of the post box') ?></label></th>
+<td><input name="default_post_edit_rows" type="text" id="default_post_edit_rows" value="<?php form_option('default_post_edit_rows'); ?>" class="small-text" />
+<?php _e('lines') ?></td>
+</tr>
+<tr valign="top">
 <th scope="row"><?php _e('Formatting') ?></th>
 <td><fieldset><legend class="screen-reader-text"><span><?php _e('Formatting') ?></span></legend>
 <label for="use_smilies">
@@ -102,10 +107,7 @@ if ( current_theme_supports( 'post-formats' ) ) :
 	</select>
 </td>
 </tr>
-<?php endif; endif;
-
-if ( get_option( 'link_manager_enabled' ) ) :
-?>
+<?php endif; endif; ?>
 <tr valign="top">
 <th scope="row"><label for="default_link_category"><?php _e('Default Link Category') ?></label></th>
 <td>
@@ -114,12 +116,7 @@ wp_dropdown_categories(array('hide_empty' => 0, 'name' => 'default_link_category
 ?>
 </td>
 </tr>
-<?php endif; ?>
-
-<?php
-do_settings_fields('writing', 'default');
-do_settings_fields('writing', 'remote_publishing'); // A deprecated section.
-?>
+<?php do_settings_fields('writing', 'default'); ?>
 </table>
 
 <h3 class="title"><?php _e('Press This') ?></h3>
@@ -166,6 +163,28 @@ wp_dropdown_categories(array('hide_empty' => 0, 'name' => 'default_email_categor
 </table>
 <?php } ?>
 
+<h3><?php _e('Remote Publishing') ?></h3>
+<p><?php printf(__('To post to WordPress from a desktop blogging client or remote website that uses the Atom Publishing Protocol or one of the XML-RPC publishing interfaces you must enable them below.')) ?></p>
+<table class="form-table">
+<tr valign="top">
+<th scope="row"><?php _e('Atom Publishing Protocol') ?></th>
+<td><fieldset><legend class="screen-reader-text"><span><?php _e('Atom Publishing Protocol') ?></span></legend>
+<label for="enable_app">
+<input name="enable_app" type="checkbox" id="enable_app" value="1" <?php checked('1', get_option('enable_app')); ?> />
+<?php _e('Enable the Atom Publishing Protocol.') ?></label><br />
+</fieldset></td>
+</tr>
+<tr valign="top">
+<th scope="row"><?php _e('XML-RPC') ?></th>
+<td><fieldset><legend class="screen-reader-text"><span><?php _e('XML-RPC') ?></span></legend>
+<label for="enable_xmlrpc">
+<input name="enable_xmlrpc" type="checkbox" id="enable_xmlrpc" value="1" <?php checked('1', get_option('enable_xmlrpc')); ?> />
+<?php _e('Enable the WordPress, Movable Type, MetaWeblog and Blogger XML-RPC publishing protocols.') ?></label><br />
+</fieldset></td>
+</tr>
+<?php do_settings_fields('writing', 'remote_publishing'); ?>
+</table>
+
 <?php if ( apply_filters( 'enable_update_services_configuration', true ) ) { ?>
 <h3><?php _e('Update Services') ?></h3>
 
@@ -177,7 +196,7 @@ wp_dropdown_categories(array('hide_empty' => 0, 'name' => 'default_email_categor
 
 <?php else : ?>
 
-	<p><?php printf(__('WordPress is not notifying any <a href="http://codex.wordpress.org/Update_Services">Update Services</a> because of your site&#8217;s <a href="%s">visibility settings</a>.'), 'options-reading.php'); ?></p>
+	<p><?php printf(__('WordPress is not notifying any <a href="http://codex.wordpress.org/Update_Services">Update Services</a> because of your site&#8217;s <a href="%s">privacy settings</a>.'), 'options-privacy.php'); ?></p>
 
 <?php endif; ?>
 <?php } // multisite ?>
