@@ -4,11 +4,11 @@ web1:
     - wp-content/
   after_build:
     - "mv pagoda/wp-config.php wp-config.php"
-    - "rm -R pagoda"
+    - "rmdir pagoda"
     - "mv wp-content/ wp-content-tmp/"
   after_deploy:
     - "cp -R wp-content-tmp/* wp-content/"
-    - "rm -R wp-content-tmp"
+    - "rmdir wp-content-tmp"
   php_extensions:
     - mysql
     - gd
