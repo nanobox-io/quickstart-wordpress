@@ -16,3 +16,4 @@ web1:
     - apc
 db1:
   name: wp-db
+  type: mysql
