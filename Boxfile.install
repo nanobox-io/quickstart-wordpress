@@ -1,0 +1,24 @@
+web1: 
+  name: wp-web 
+  shared_writable_dirs:
+    - wp-content/
+  before_deploy:
+    - "cp -R wp-content/ wp-content-tmp/"
+  after_build:
+    - "mv pagoda/wp-config.php wp-config.php"
+    - "rm -R pagoda"
+    - "mv -R wp-content-tmp/plugins/ wp-content/plugins/"
+    - "mv -R wp-content-tmp/themes/ wp-content/themes/"
+    - "rm -R wp-content-tmp"
+  php_extensions:
+    - mysql
+    - gd
+    - mbstring
+    - exif
+    - iconv
+    - mcrypt
+    - zip
+    - apc
+db1:
+  name: wp-db
+  type: mysql
