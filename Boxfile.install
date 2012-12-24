@@ -5,10 +5,9 @@ web1:
   after_build:
     - "mv pagoda/wp-config.php wp-config.php"
     - "rm -R pagoda"
-    - "cp wp-content/* wp-content-tmp/"
+    - "mv wp-content/ wp-content-tmp/"
   after_deploy:
-    - "cp -R wp-content-tmp/plugins/* wp-content/plugins/"
-    - "cp -R wp-content-tmp/themes/* wp-content/themes/"
+    - "cp -R wp-content-tmp/* wp-content/"
     - "rm -R wp-content-tmp"
   php_extensions:
     - mysql
