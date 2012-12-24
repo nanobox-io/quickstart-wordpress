@@ -17,7 +17,5 @@ web1:
     - iconv
     - mcrypt
     - zip
-    - apc
 db1:
   name: wp-db
-  type: mysql
