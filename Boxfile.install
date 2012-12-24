@@ -2,13 +2,13 @@ web1:
   name: wp-web 
   shared_writable_dirs:
     - wp-content/
-  before_deploy:
-    - "cp -R wp-content/ wp-content-tmp/"
   after_build:
     - "mv pagoda/wp-config.php wp-config.php"
     - "rm -R pagoda"
-    - "mv -R wp-content-tmp/plugins/ wp-content/plugins/"
-    - "mv -R wp-content-tmp/themes/ wp-content/themes/"
+    - "cp wp-content/* wp-content-tmp/"
+  after_deploy:
+    - "cp -R wp-content-tmp/plugins/* wp-content/plugins/"
+    - "cp -R wp-content-tmp/themes/* wp-content/themes/"
     - "rm -R wp-content-tmp"
   php_extensions:
     - mysql
