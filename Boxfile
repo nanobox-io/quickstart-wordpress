@@ -4,15 +4,7 @@ web1:
     - wp-content/
   after_build:
     - "mv pagoda/wp-config.php wp-config.php"
-  after_deploy:
-    - "cp -R pagoda/wp-content/* wp-content/"
-  php_extensions:
-    - mysql
-    - gd
-    - mbstring
-    - exif
-    - iconv
-    - mcrypt
-    - zip
+    - "cp pagoda/wp-content/* wp-content/"
+    - "rm -R pagoda"
 db1:
   name: wp-db
