@@ -1,12 +1,13 @@
 /*
 Theme Name: Twenty Ten
-Theme URI: http://wordpress.org/
+Theme URI: http://wordpress.org/extend/themes/twentyten
 Description: The 2010 theme for WordPress is stylish, customizable, simple, and readable -- make it yours with a custom menu, header image, and background. Twenty Ten supports six widgetized areas (two in the sidebar, four in the footer) and featured images (thumbnails for gallery posts and custom header images for posts and pages). It includes stylesheets for print and the admin Visual Editor, special styles for posts in the "Asides" and "Gallery" categories, and has an optional one-column page template that removes the sidebar.
 Author: the WordPress team
-Version: 1.4
+Author URI: http://wordpress.org/
+Version: 1.5
 License: GNU General Public License v2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
-Tags: black, blue, white, two-columns, fixed-width, custom-header, custom-background, threaded-comments, sticky-post, translation-ready, microformats, rtl-language-support, editor-style, custom-menu
+Tags: black, blue, white, two-columns, fixed-width, custom-header, custom-background, threaded-comments, sticky-post, translation-ready, microformats, rtl-language-support, editor-style, custom-menu, flexible-header
 Text Domain: twentyten
 */
 
@@ -145,7 +146,7 @@ h3#reply-title,
 .wp-caption-text {
 	font-family: "Helvetica Neue", Arial, Helvetica, "Nimbus Sans L", sans-serif;
 }
-input[type=submit] {
+input[type="submit"] {
 	font-family: "Helvetica Neue", Arial, Helvetica, "Nimbus Sans L", sans-serif;
 }
 pre {
@@ -307,7 +308,14 @@ sup {
 sub {
 	top: .5ex;
 }
+small {
+	font-size: smaller;
+}
 input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="url"],
+input[type="number"],
 textarea {
 	background: #f9f9f9;
 	border: 1px solid #ccc;
@@ -437,12 +445,14 @@ div.menu li {
 	display: block;
 }
 #access ul li.current_page_item > a,
+#access ul li.current_page_ancestor > a,
 #access ul li.current-menu-ancestor > a,
 #access ul li.current-menu-item > a,
 #access ul li.current-menu-parent > a {
 	color: #fff;
 }
 * html #access ul li.current_page_item a,
+* html #access ul li.current_page_ancestor a,
 * html #access ul li.current-menu-ancestor a,
 * html #access ul li.current-menu-item a,
 * html #access ul li.current-menu-parent a,
@@ -645,7 +655,7 @@ div.menu li {
 	clear: both;
 	color: #000;
 	font-weight: bold;
-	margin: 0 0 22px 0;
+	line-height: 48px;
 	word-spacing: 0.5em;
 }
 .page-link a:link,
@@ -781,7 +791,8 @@ img.size-auto,
 img.size-full,
 img.size-large,
 img.size-medium,
-.attachment img {
+.attachment img,
+.widget-container img {
 	max-width: 100%; /* When images are too wide for containing element, force them to fit. */
 	height: auto; /* Override height to match resized width for correct aspect ratio. */
 }
@@ -1041,7 +1052,7 @@ a.comment-edit-link:hover {
 }
 
 /* Comments form */
-input[type=submit] {
+input[type="submit"] {
 	color: #333;
 }
 #respond {
@@ -1129,7 +1140,14 @@ h3#reply-title {
 	display: none;
 }
 .widget-container {
+	word-wrap: break-word;
+	-webkit-hyphens: auto;
+	-moz-hyphens: auto;
+	hyphens: auto;
 	margin: 0 0 18px 0;
+}
+.widget-container .wp-caption img {
+	margin: auto;
 }
 .widget-title {
 	color: #222;
