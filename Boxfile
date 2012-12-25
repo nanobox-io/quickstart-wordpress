@@ -16,4 +16,3 @@ web1:
     - zip
 db1:
   name: wp-db
-  type: mysql
