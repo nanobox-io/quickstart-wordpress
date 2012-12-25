@@ -1,0 +1,3 @@
+web1: 
+  before_deploy:
+    - "cp -R pagoda/wp-content/* wp-content/"
