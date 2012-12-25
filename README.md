@@ -12,11 +12,21 @@ The following is an explanation of how this Quickstart was created so you can us
     </code>
 </pre>  
 
+* Boxfile.install: Because we made the full wp-content folder writable, we need to copy these files to the writable store folder before the deploy. We only need to do this the first time when you run the setup of this Quickstart. If you need to update this plugins, you cna always do this from the wp-adin interface.
+
+<pre>
+    <code>
+		  before_deploy:
+		    - "cp -R pagoda/wp-content/* wp-content/"
+    </code>
+</pre>  
+
 * Database Component: An empty database was created by adding a db component to the Boxfile.
 
 <pre>
     <code>
         db1:
             name: wp-db
+            type: mysql
     </code>
 </pre>
