@@ -4,6 +4,8 @@ web1:
     - wp-content/
   after_build:
     - "mv pagoda/wp-config.php wp-config.php"
+  after_deploy:
+    - "rm -rf pagoda/"
 db1:
   name: wp-db
   type: mysql
