@@ -7,3 +7,4 @@ web1:
     - "rm -R pagoda"
 db1:
   name: wp-db
+  type: mysql
