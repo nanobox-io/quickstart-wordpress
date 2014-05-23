@@ -1,13 +1,22 @@
 <?php
 /**
- * Revisions administration panel.
+ * Revisions administration panel
+ *
+ * Requires wp-admin/includes/revision.php.
  *
  * @package WordPress
  * @subpackage Administration
+ * @since 2.6.0
+ *
+ * @param int    revision Optional. The revision ID.
+ * @param string action   The action to take.
+ *                        Accepts 'restore', 'view' or 'edit'.
+ * @param int    from     The revision to compare from.
+ * @param int    to       Optional, required if revision missing. The revision to compare to.
  */
 
 /** WordPress Administration Bootstrap */
-require_once('./admin.php');
+require_once( dirname( __FILE__ ) . '/admin.php' );
 
 require ABSPATH . 'wp-admin/includes/revision.php';
 
@@ -63,9 +72,11 @@ default :
 		break;
 	}
 
-	$post_title = '<a href="' . get_edit_post_link() . '">' . _draft_or_post_title() . '</a>';
-	$h2 = sprintf( __( 'Compare Revisions of &#8220;%1$s&#8221;' ), $post_title );
-	$title = __( 'Revisions' );
+	$post_edit_link = get_edit_post_link();
+	$post_title     = '<a href="' . $post_edit_link . '">' . _draft_or_post_title() . '</a>';
+	$h2             = sprintf( __( 'Compare Revisions of &#8220;%1$s&#8221;' ), $post_title );
+	$return_to_post = '<a href="' . $post_edit_link . '">' . __( '&larr; Return to post editor' ) . '</a>';
+	$title          = __( 'Revisions' );
 
 	$redirect = false;
 	break;
@@ -106,17 +117,17 @@ get_current_screen()->add_help_tab( array(
 
 $revisions_sidebar  = '<p><strong>' . __( 'For more information:' ) . '</strong></p>';
 $revisions_sidebar .= '<p>' . __( '<a href="http://codex.wordpress.org/Revision_Management" target="_blank">Revisions Management</a>' ) . '</p>';
-$revisions_sidebar .= '<p>' . __( '<a href="http://wordpress.org/support/" target="_blank">Support Forums</a>' ) . '</p>';
+$revisions_sidebar .= '<p>' . __( '<a href="https://wordpress.org/support/" target="_blank">Support Forums</a>' ) . '</p>';
 
 get_current_screen()->set_help_sidebar( $revisions_sidebar );
 
-require_once( './admin-header.php' );
+require_once( ABSPATH . 'wp-admin/admin-header.php' );
 
 ?>
 
 <div class="wrap">
-	<?php screen_icon(); ?>
 	<h2 class="long-header"><?php echo $h2; ?></h2>
+	<?php echo $return_to_post; ?>
 </div>
 
 <script id="tmpl-revisions-frame" type="text/html">
@@ -207,4 +218,4 @@ require_once( './admin-header.php' );
 
 
 <?php
-require_once( './admin-footer.php' );
+require_once( ABSPATH . 'wp-admin/admin-footer.php' );

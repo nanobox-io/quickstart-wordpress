@@ -1,6 +1,6 @@
 <?php
 /**
- * Customize Controls
+ * Theme Customize Screen.
  *
  * @package WordPress
  * @subpackage Customize
@@ -9,7 +9,9 @@
 
 define( 'IFRAME_REQUEST', true );
 
-require_once( './admin.php' );
+/** Load WordPress Administration Bootstrap */
+require_once( dirname( __FILE__ ) . '/admin.php' );
+
 if ( ! current_user_can( 'edit_theme_options' ) )
 	wp_die( __( 'Cheatin&#8217; uh?' ) );
 
@@ -31,6 +33,11 @@ add_action( 'customize_controls_print_scripts',        'print_head_scripts', 20 
 add_action( 'customize_controls_print_footer_scripts', '_wp_footer_scripts'     );
 add_action( 'customize_controls_print_styles',         'print_admin_styles', 20 );
 
+/**
+ * Fires when Customizer controls are initialized, before scripts are enqueued.
+ *
+ * @since 3.4.0
+ */
 do_action( 'customize_controls_init' );
 
 wp_enqueue_script( 'customize-controls' );
@@ -38,6 +45,11 @@ wp_enqueue_style( 'customize-controls' );
 
 wp_enqueue_script( 'accordion' );
 
+/**
+ * Enqueue Customizer control scripts.
+ *
+ * @since 3.4.0
+ */
 do_action( 'customize_controls_enqueue_scripts' );
 
 // Let's roll.
@@ -46,7 +58,7 @@ do_action( 'customize_controls_enqueue_scripts' );
 wp_user_settings();
 _wp_admin_html_begin();
 
-$body_class = 'wp-core-ui js';
+$body_class = 'wp-core-ui wp-customizer js';
 
 if ( wp_is_mobile() ) :
 	$body_class .= ' mobile';
@@ -64,9 +76,25 @@ if ( is_rtl() )
 $body_class .= ' locale-' . sanitize_html_class( strtolower( str_replace( '_', '-', get_locale() ) ) );
 
 $admin_title = sprintf( __( '%1$s &#8212; WordPress' ), strip_tags( sprintf( __( 'Customize %s' ), $wp_customize->theme()->display('Name') ) ) );
-?><title><?php echo $admin_title; ?></title><?php
+?><title><?php echo $admin_title; ?></title>
 
+<script type="text/javascript">
+var ajaxurl = '<?php echo admin_url( 'admin-ajax.php', 'relative' ); ?>';
+</script>
+
+<?php
+/**
+ * Fires when Customizer control styles are printed.
+ *
+ * @since 3.4.0
+ */
 do_action( 'customize_controls_print_styles' );
+
+/**
+ * Fires when Customizer control scripts are printed.
+ *
+ * @since 3.4.0
+ */
 do_action( 'customize_controls_print_scripts' );
 ?>
 </head>
@@ -90,6 +118,7 @@ do_action( 'customize_controls_print_scripts' );
 			$cannot_expand = ! ( $screenshot || $wp_customize->theme()->get('Description') );
 		?>
 
+		<div id="widgets-right"><!-- For Widget Customizer, many widgets try to look for instances under div#widgets-right, so we have to add that ID to a container div in the customizer for compat -->
 		<div class="wp-full-overlay-sidebar-content accordion-container" tabindex="-1">
 			<div id="customize-info" class="accordion-section <?php if ( $cannot_expand ) echo ' cannot-expand'; ?>">
 				<div class="accordion-section-title" aria-label="<?php esc_attr_e( 'Theme Customizer Options' ); ?>" tabindex="0">
@@ -118,6 +147,7 @@ do_action( 'customize_controls_print_scripts' );
 				?>
 			</ul></div>
 		</div>
+		</div>
 
 		<div id="customize-footer-actions" class="wp-full-overlay-footer">
 			<a href="#" class="collapse-sidebar button-secondary" title="<?php esc_attr_e('Collapse Sidebar'); ?>">
@@ -129,6 +159,11 @@ do_action( 'customize_controls_print_scripts' );
 	<div id="customize-preview" class="wp-full-overlay-main"></div>
 	<?php
 
+	/**
+	 * Print Customizer control scripts in the footer.
+	 *
+	 * @since 3.4.0
+	 */
 	do_action( 'customize_controls_print_footer_scripts' );
 
 	// If the frontend and the admin are served from the same domain, load the
@@ -146,6 +181,13 @@ do_action( 'customize_controls_print_scripts' );
 	if ( is_ssl() && ! $cross_domain )
 		$allowed_urls[] = home_url( '/', 'https' );
 
+	/**
+	 * Filter the list of URLs allowed to be clicked and followed in the Customizer preview.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param array $allowed_urls An array of allowed URLs.
+	 */
 	$allowed_urls = array_unique( apply_filters( 'customize_allowed_urls', $allowed_urls ) );
 
 	$fallback_url = add_query_arg( array(
@@ -161,21 +203,22 @@ do_action( 'customize_controls_print_scripts' );
 		'customize-login' => 1
 	), wp_login_url() );
 
+	// Prepare customizer settings to pass to Javascript.
 	$settings = array(
 		'theme'    => array(
 			'stylesheet' => $wp_customize->get_stylesheet(),
 			'active'     => $wp_customize->is_theme_active(),
 		),
 		'url'      => array(
-			'preview'       => esc_url( $url ? $url : home_url( '/' ) ),
-			'parent'        => esc_url( admin_url() ),
-			'activated'     => admin_url( 'themes.php?activated=true&previewed' ),
-			'ajax'          => esc_url( admin_url( 'admin-ajax.php', 'relative' ) ),
-			'allowed'       => array_map( 'esc_url', $allowed_urls ),
+			'preview'       => esc_url_raw( $url ? $url : home_url( '/' ) ),
+			'parent'        => esc_url_raw( admin_url() ),
+			'activated'     => esc_url_raw( admin_url( 'themes.php?activated=true&previewed' ) ),
+			'ajax'          => esc_url_raw( admin_url( 'admin-ajax.php', 'relative' ) ),
+			'allowed'       => array_map( 'esc_url_raw', $allowed_urls ),
 			'isCrossDomain' => $cross_domain,
-			'fallback'      => $fallback_url,
-			'home'          => esc_url( home_url( '/' ) ),
-			'login'         => $login_url,
+			'fallback'      => esc_url_raw( $fallback_url ),
+			'home'          => esc_url_raw( home_url( '/' ) ),
+			'login'         => esc_url_raw( $login_url ),
 		),
 		'browser'  => array(
 			'mobile' => wp_is_mobile(),
@@ -184,11 +227,12 @@ do_action( 'customize_controls_print_scripts' );
 		'settings' => array(),
 		'controls' => array(),
 		'nonce'    => array(
- 			'save'    => wp_create_nonce( 'save-customize_' . $wp_customize->get_stylesheet() ),
- 			'preview' => wp_create_nonce( 'preview-customize_' . $wp_customize->get_stylesheet() )
- 		),
+			'save'    => wp_create_nonce( 'save-customize_' . $wp_customize->get_stylesheet() ),
+			'preview' => wp_create_nonce( 'preview-customize_' . $wp_customize->get_stylesheet() )
+		),
 	);
 
+	// Prepare Customize Setting objects to pass to Javascript.
 	foreach ( $wp_customize->settings() as $id => $setting ) {
 		$settings['settings'][ $id ] = array(
 			'value'     => $setting->js_value(),
@@ -196,6 +240,7 @@ do_action( 'customize_controls_print_scripts' );
 		);
 	}
 
+	// Prepare Customize Control objects to pass to Javascript.
 	foreach ( $wp_customize->controls() as $id => $control ) {
 		$control->to_json();
 		$settings['controls'][ $id ] = $control->json;

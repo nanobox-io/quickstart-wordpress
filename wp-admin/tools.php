@@ -7,7 +7,7 @@
  */
 
 /** WordPress Administration Bootstrap */
-require_once('./admin.php');
+require_once( dirname( __FILE__ ) . '/admin.php' );
 
 $title = __('Tools');
 
@@ -26,14 +26,13 @@ get_current_screen()->add_help_tab( array(
 get_current_screen()->set_help_sidebar(
 	'<p><strong>' . __('For more information:') . '</strong></p>' .
 	'<p>' . __('<a href="http://codex.wordpress.org/Tools_Screen" target="_blank">Documentation on Tools</a>') . '</p>' .
-	'<p>' . __('<a href="http://wordpress.org/support/" target="_blank">Support Forums</a>') . '</p>'
+	'<p>' . __('<a href="https://wordpress.org/support/" target="_blank">Support Forums</a>') . '</p>'
 );
 
-require_once('./admin-header.php');
+require_once( ABSPATH . 'wp-admin/admin-header.php' );
 
 ?>
 <div class="wrap">
-<?php screen_icon(); ?>
 <h2><?php echo esc_html( $title ); ?></h2>
 
 <?php if ( current_user_can('edit_posts') ) : ?>
@@ -64,8 +63,13 @@ if ( current_user_can($cats->cap->manage_terms) || current_user_can($tags->cap->
 endif;
 endif;
 
+/**
+ * Fires at the end of the Tools Administration screen.
+ *
+ * @since 2.8.0
+ */
 do_action( 'tool_box' );
 ?>
 </div>
 <?php
-include('./admin-footer.php');
+include( ABSPATH . 'wp-admin/admin-footer.php' );

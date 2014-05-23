@@ -1,6 +1,6 @@
 <?php
 /**
- * Twenty Twelve functions and definitions.
+ * Twenty Twelve functions and definitions
  *
  * Sets up the theme and provides some helper functions, which are used
  * in the theme as custom template tags. Others are attached to action and
@@ -15,20 +15,20 @@
  * Functions that are not pluggable (not wrapped in function_exists()) are instead attached
  * to a filter or action hook.
  *
- * For more information on hooks, actions, and filters, see http://codex.wordpress.org/Plugin_API.
+ * For more information on hooks, actions, and filters, @link http://codex.wordpress.org/Plugin_API
  *
  * @package WordPress
  * @subpackage Twenty_Twelve
  * @since Twenty Twelve 1.0
  */
 
-/**
- * Sets up the content width value based on the theme's design and stylesheet.
- */
+// Set up the content width value based on the theme's design and stylesheet.
 if ( ! isset( $content_width ) )
 	$content_width = 625;
 
 /**
+ * Twenty Twelve setup.
+ *
  * Sets up theme defaults and registers the various WordPress features that
  * Twenty Twelve supports.
  *
@@ -64,8 +64,8 @@ function twentytwelve_setup() {
 	register_nav_menu( 'primary', __( 'Primary Menu', 'twentytwelve' ) );
 
 	/*
-	 * This theme supports custom background color and image, and here
-	 * we also set up the default background color.
+	 * This theme supports custom background color and image,
+	 * and here we also set up the default background color.
 	 */
 	add_theme_support( 'custom-background', array(
 		'default-color' => 'e6e6e6',
@@ -78,12 +78,12 @@ function twentytwelve_setup() {
 add_action( 'after_setup_theme', 'twentytwelve_setup' );
 
 /**
- * Adds support for a custom header image.
+ * Add support for a custom header image.
  */
 require( get_template_directory() . '/inc/custom-header.php' );
 
 /**
- * Returns the Google font stylesheet URL if available.
+ * Return the Google font stylesheet URL if available.
  *
  * The use of Open Sans by default is localized. For languages that use
  * characters not supported by the font, the font can be disabled.
@@ -96,12 +96,14 @@ function twentytwelve_get_font_url() {
 	$font_url = '';
 
 	/* translators: If there are characters in your language that are not supported
-	 by Open Sans, translate this to 'off'. Do not translate into your own language. */
+	 * by Open Sans, translate this to 'off'. Do not translate into your own language.
+	 */
 	if ( 'off' !== _x( 'on', 'Open Sans font: on or off', 'twentytwelve' ) ) {
 		$subsets = 'latin,latin-ext';
 
-		/* translators: To add an additional Open Sans character subset specific to your language, translate
-		 this to 'greek', 'cyrillic' or 'vietnamese'. Do not translate into your own language. */
+		/* translators: To add an additional Open Sans character subset specific to your language,
+		 * translate this to 'greek', 'cyrillic' or 'vietnamese'. Do not translate into your own language.
+		 */
 		$subset = _x( 'no-subset', 'Open Sans font: add new subset (greek, cyrillic, vietnamese)', 'twentytwelve' );
 
 		if ( 'cyrillic' == $subset )
@@ -123,7 +125,7 @@ function twentytwelve_get_font_url() {
 }
 
 /**
- * Enqueues scripts and styles for front-end.
+ * Enqueue scripts and styles for front-end.
  *
  * @since Twenty Twelve 1.0
  */
@@ -137,29 +139,25 @@ function twentytwelve_scripts_styles() {
 	if ( is_singular() && comments_open() && get_option( 'thread_comments' ) )
 		wp_enqueue_script( 'comment-reply' );
 
-	/*
-	 * Adds JavaScript for handling the navigation menu hide-and-show behavior.
-	 */
-	wp_enqueue_script( 'twentytwelve-navigation', get_template_directory_uri() . '/js/navigation.js', array(), '1.0', true );
+	// Adds JavaScript for handling the navigation menu hide-and-show behavior.
+	wp_enqueue_script( 'twentytwelve-navigation', get_template_directory_uri() . '/js/navigation.js', array( 'jquery' ), '20140318', true );
 
 	$font_url = twentytwelve_get_font_url();
 	if ( ! empty( $font_url ) )
 		wp_enqueue_style( 'twentytwelve-fonts', esc_url_raw( $font_url ), array(), null );
 
-	/*
-	 * Loads our main stylesheet.
-	 */
+	// Loads our main stylesheet.
 	wp_enqueue_style( 'twentytwelve-style', get_stylesheet_uri() );
 
-	/*
-	 * Loads the Internet Explorer specific stylesheet.
-	 */
+	// Loads the Internet Explorer specific stylesheet.
 	wp_enqueue_style( 'twentytwelve-ie', get_template_directory_uri() . '/css/ie.css', array( 'twentytwelve-style' ), '20121010' );
 	$wp_styles->add_data( 'twentytwelve-ie', 'conditional', 'lt IE 9' );
 }
 add_action( 'wp_enqueue_scripts', 'twentytwelve_scripts_styles' );
 
 /**
+ * Filter TinyMCE CSS path to include Google Fonts.
+ *
  * Adds additional stylesheets to the TinyMCE editor if needed.
  *
  * @uses twentytwelve_get_font_url() To get the Google Font stylesheet URL.
@@ -167,7 +165,7 @@ add_action( 'wp_enqueue_scripts', 'twentytwelve_scripts_styles' );
  * @since Twenty Twelve 1.2
  *
  * @param string $mce_css CSS path to load in TinyMCE.
- * @return string
+ * @return string Filtered CSS path.
  */
 function twentytwelve_mce_css( $mce_css ) {
 	$font_url = twentytwelve_get_font_url();
@@ -185,6 +183,8 @@ function twentytwelve_mce_css( $mce_css ) {
 add_filter( 'mce_css', 'twentytwelve_mce_css' );
 
 /**
+ * Filter the page title.
+ *
  * Creates a nicely formatted and more specific title element text
  * for output in head of document, based on current view.
  *
@@ -201,7 +201,7 @@ function twentytwelve_wp_title( $title, $sep ) {
 		return $title;
 
 	// Add the site name.
-	$title .= get_bloginfo( 'name' );
+	$title .= get_bloginfo( 'name', 'display' );
 
 	// Add the site description for the home/front page.
 	$site_description = get_bloginfo( 'description', 'display' );
@@ -217,6 +217,8 @@ function twentytwelve_wp_title( $title, $sep ) {
 add_filter( 'wp_title', 'twentytwelve_wp_title', 10, 2 );
 
 /**
+ * Filter the page menu arguments.
+ *
  * Makes our wp_nav_menu() fallback -- wp_page_menu() -- show a home link.
  *
  * @since Twenty Twelve 1.0
@@ -229,6 +231,8 @@ function twentytwelve_page_menu_args( $args ) {
 add_filter( 'wp_page_menu_args', 'twentytwelve_page_menu_args' );
 
 /**
+ * Register sidebars.
+ *
  * Registers our main widget area and the front page widget areas.
  *
  * @since Twenty Twelve 1.0
@@ -353,6 +357,8 @@ endif;
 
 if ( ! function_exists( 'twentytwelve_entry_meta' ) ) :
 /**
+ * Set up post entry meta.
+ *
  * Prints HTML with meta information for current post: categories, tags, permalink, author, and date.
  *
  * Create your own twentytwelve_entry_meta() to override in a child theme.
@@ -399,6 +405,8 @@ function twentytwelve_entry_meta() {
 endif;
 
 /**
+ * Extend the default WordPress body classes.
+ *
  * Extends the default WordPress body class to denote:
  * 1. Using a full-width layout, when no active widgets in the sidebar
  *    or full-width template.
@@ -410,7 +418,7 @@ endif;
  *
  * @since Twenty Twelve 1.0
  *
- * @param array Existing class values.
+ * @param array $classes Existing class values.
  * @return array Filtered class values.
  */
 function twentytwelve_body_class( $classes ) {
@@ -447,6 +455,8 @@ function twentytwelve_body_class( $classes ) {
 add_filter( 'body_class', 'twentytwelve_body_class' );
 
 /**
+ * Adjust content width in certain contexts.
+ *
  * Adjusts content_width value for full-width and single image attachment
  * templates, and when there are no active widgets in the sidebar.
  *
@@ -461,12 +471,13 @@ function twentytwelve_content_width() {
 add_action( 'template_redirect', 'twentytwelve_content_width' );
 
 /**
- * Add postMessage support for site title and description for the Theme Customizer.
+ * Register postMessage support.
+ *
+ * Add postMessage support for site title and description for the Customizer.
  *
  * @since Twenty Twelve 1.0
  *
- * @param WP_Customize_Manager $wp_customize Theme Customizer object.
- * @return void
+ * @param WP_Customize_Manager $wp_customize Customizer object.
  */
 function twentytwelve_customize_register( $wp_customize ) {
 	$wp_customize->get_setting( 'blogname' )->transport         = 'postMessage';
@@ -476,7 +487,9 @@ function twentytwelve_customize_register( $wp_customize ) {
 add_action( 'customize_register', 'twentytwelve_customize_register' );
 
 /**
- * Binds JS handlers to make Theme Customizer preview reload changes asynchronously.
+ * Enqueue Javascript postMessage handlers for the Customizer.
+ *
+ * Binds JS handlers to make the Customizer preview reload changes asynchronously.
  *
  * @since Twenty Twelve 1.0
  */

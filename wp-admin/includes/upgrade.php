@@ -86,6 +86,15 @@ function wp_install( $blog_title, $user_name, $user_email, $public, $deprecated 
 
 	wp_cache_flush();
 
+	/**
+	 * Fires after a site is fully installed.
+	 *
+	 * @since 3.9.0
+	 *
+	 * @param WP_User $user The site owner.
+	 */
+	do_action( 'wp_install', $user );
+
 	return array('url' => $guessurl, 'user_id' => $user_id, 'password' => $user_password, 'password_message' => $message);
 }
 endif;
@@ -100,8 +109,8 @@ if ( !function_exists('wp_install_defaults') ) :
  *
  * @param int $user_id User ID.
  */
-function wp_install_defaults($user_id) {
-	global $wpdb, $wp_rewrite, $current_site, $table_prefix;
+function wp_install_defaults( $user_id ) {
+	global $wpdb, $wp_rewrite, $table_prefix;
 
 	// Default category
 	$cat_name = __('Uncategorized');
@@ -135,7 +144,7 @@ function wp_install_defaults($user_id) {
 			$first_post = __( 'Welcome to <a href="SITE_URL">SITE_NAME</a>. This is your first post. Edit or delete it, then start blogging!' );
 
 		$first_post = str_replace( "SITE_URL", esc_url( network_home_url() ), $first_post );
-		$first_post = str_replace( "SITE_NAME", $current_site->site_name, $first_post );
+		$first_post = str_replace( "SITE_NAME", get_current_site()->site_name, $first_post );
 	} else {
 		$first_post = __('Welcome to WordPress. This is your first post. Edit or delete it, then start blogging!');
 	}
@@ -161,7 +170,7 @@ function wp_install_defaults($user_id) {
 
 	// Default comment
 	$first_comment_author = __('Mr WordPress');
-	$first_comment_url = 'http://wordpress.org/';
+	$first_comment_url = 'https://wordpress.org/';
 	$first_comment = __('Hi, this is a comment.
 To delete a comment, just log in and view the post&#039;s comments. There you will have the option to edit or delete them.');
 	if ( is_multisite() ) {
@@ -218,7 +227,7 @@ As a new WordPress user, you should go to <a href=\"%s\">your dashboard</a> to d
 	update_option( 'widget_archives', array ( 2 => array ( 'title' => '', 'count' => 0, 'dropdown' => 0 ), '_multiwidget' => 1 ) );
 	update_option( 'widget_categories', array ( 2 => array ( 'title' => '', 'count' => 0, 'hierarchical' => 0, 'dropdown' => 0 ), '_multiwidget' => 1 ) );
 	update_option( 'widget_meta', array ( 2 => array ( 'title' => '' ), '_multiwidget' => 1 ) );
-	update_option( 'sidebars_widgets', array ( 'wp_inactive_widgets' => array (), 'sidebar-1' => array ( 0 => 'search-2', 1 => 'recent-posts-2', 2 => 'recent-comments-2', 3 => 'archives-2', 4 => 'categories-2', 5 => 'meta-2', ), 'sidebar-2' => array (),'array_version' => 3 ) );
+	update_option( 'sidebars_widgets', array ( 'wp_inactive_widgets' => array (), 'sidebar-1' => array ( 0 => 'search-2', 1 => 'recent-posts-2', 2 => 'recent-comments-2', 3 => 'archives-2', 4 => 'categories-2', 5 => 'meta-2', ), 'sidebar-2' => array (), 'sidebar-3' => array (), 'array_version' => 3 ) );
 
 	if ( ! is_multisite() )
 		update_user_meta( $user_id, 'show_welcome_panel', 1 );
@@ -273,7 +282,7 @@ Password: %3\$s
 We hope you enjoy your new site. Thanks!
 
 --The WordPress Team
-http://wordpress.org/
+https://wordpress.org/
 "), $blog_url, $name, $password);
 
 	@wp_mail($email, __('New WordPress Site'), $message);
@@ -317,6 +326,16 @@ function wp_upgrade() {
 		else
 			$wpdb->query( "INSERT INTO {$wpdb->blog_versions} ( `blog_id` , `db_version` , `last_updated` ) VALUES ( '{$wpdb->blogid}', '{$wp_db_version}', NOW());" );
 	}
+
+	/**
+	 * Fires after a site is fully upgraded.
+	 *
+	 * @since 3.9.0
+	 *
+	 * @param int $wp_db_version         The new $wp_db_version.
+	 * @param int $wp_current_db_version The old (current) $wp_db_version.
+	 */
+	do_action( 'wp_upgrade', $wp_db_version, $wp_current_db_version );
 }
 endif;
 
@@ -401,6 +420,15 @@ function upgrade_all() {
 
 	if ( $wp_current_db_version < 22422 )
 		upgrade_350();
+
+	if ( $wp_current_db_version < 25824 )
+		upgrade_370();
+
+	if ( $wp_current_db_version < 26148 )
+		upgrade_372();
+
+	if ( $wp_current_db_version < 26691 )
+		upgrade_380();
 
 	maybe_disable_link_manager();
 
@@ -1209,12 +1237,60 @@ function upgrade_350() {
 }
 
 /**
+ * Execute changes made in WordPress 3.7.
+ *
+ * @since 3.7.0
+ */
+function upgrade_370() {
+	global $wp_current_db_version;
+	if ( $wp_current_db_version < 25824 )
+		wp_clear_scheduled_hook( 'wp_auto_updates_maybe_update' );
+}
+
+/**
+ * Execute changes made in WordPress 3.7.2.
+ *
+ * @since 3.7.2
+ * @since 3.8.0
+ */
+function upgrade_372() {
+	global $wp_current_db_version;
+	if ( $wp_current_db_version < 26148 )
+		wp_clear_scheduled_hook( 'wp_maybe_auto_update' );
+}
+
+/**
+ * Execute changes made in WordPress 3.8.0.
+ *
+ * @since 3.8.0
+ */
+function upgrade_380() {
+	global $wp_current_db_version;
+	if ( $wp_current_db_version < 26691 ) {
+		deactivate_plugins( array( 'mp6/mp6.php' ), true );
+	}
+}
+/**
  * Execute network level changes
  *
  * @since 3.0.0
  */
 function upgrade_network() {
 	global $wp_current_db_version, $wpdb;
+
+	// Always
+	if ( is_main_network() ) {
+		// Deletes all expired transients.
+		// The multi-table delete syntax is used to delete the transient record from table a,
+		// and the corresponding transient_timeout record from table b.
+		$time = time();
+		$wpdb->query("DELETE a, b FROM $wpdb->sitemeta a, $wpdb->sitemeta b WHERE
+			a.meta_key LIKE '\_site\_transient\_%' AND
+			a.meta_key NOT LIKE '\_site\_transient\_timeout\_%' AND
+			b.meta_key = CONCAT( '_site_transient_timeout_', SUBSTRING( a.meta_key, 17 ) )
+			AND b.meta_value < $time");
+	}
+
 	// 2.8
 	if ( $wp_current_db_version < 11549 ) {
 		$wpmu_sitewide_plugins = get_site_option( 'wpmu_sitewide_plugins' );
@@ -1479,6 +1555,14 @@ function dbDelta( $queries = '', $execute = true ) {
 		$queries = explode( ';', $queries );
 		$queries = array_filter( $queries );
 	}
+	
+	/** 
+	 * Filter the dbDelta SQL queries.
+	 *
+	 * @since 3.3.0
+	 *
+	 * @param array $queries An array of dbDelta SQL queries.
+	 */
 	$queries = apply_filters( 'dbdelta_queries', $queries );
 
 	$cqueries = array(); // Creation Queries
@@ -1500,19 +1584,41 @@ function dbDelta( $queries = '', $execute = true ) {
 			// Unrecognized query type
 		}
 	}
+	
+	/** 
+	 * Filter the dbDelta SQL queries for creating tables and/or databases.
+	 *
+	 * Queries filterable via this hook contain "CREATE TABLE" or "CREATE DATABASE".
+	 * 
+	 * @since 3.3.0
+	 *
+	 * @param array $cqueries An array of dbDelta create SQL queries.
+	 */
 	$cqueries = apply_filters( 'dbdelta_create_queries', $cqueries );
+
+	/** 
+	 * Filter the dbDelta SQL queries for inserting or updating.
+	 *
+	 * Queries filterable via this hook contain "INSERT INTO" or "UPDATE".
+	 * 
+	 * @since 3.3.0
+	 *
+	 * @param array $iqueries An array of dbDelta insert or update SQL queries.
+	 */
 	$iqueries = apply_filters( 'dbdelta_insert_queries', $iqueries );
 
 	$global_tables = $wpdb->tables( 'global' );
 	foreach ( $cqueries as $table => $qry ) {
 		// Upgrade global tables only for the main site. Don't upgrade at all if DO_NOT_UPGRADE_GLOBAL_TABLES is defined.
-		if ( in_array( $table, $global_tables ) && ( !is_main_site() || defined( 'DO_NOT_UPGRADE_GLOBAL_TABLES' ) ) )
+		if ( in_array( $table, $global_tables ) && ( !is_main_site() || defined( 'DO_NOT_UPGRADE_GLOBAL_TABLES' ) ) ) {
+			unset( $cqueries[ $table ], $for_update[ $table ] );
 			continue;
+		}
 
 		// Fetch the table column structure from the database
-		$wpdb->suppress_errors();
+		$suppress = $wpdb->suppress_errors();
 		$tablefields = $wpdb->get_results("DESCRIBE {$table};");
-		$wpdb->suppress_errors( false );
+		$wpdb->suppress_errors( $suppress );
 
 		if ( ! $tablefields )
 			continue;
@@ -1964,7 +2070,7 @@ function maybe_disable_link_manager() {
  * @since 2.9.0
  */
 function pre_schema_upgrade() {
-	global $wp_current_db_version, $wp_db_version, $wpdb;
+	global $wp_current_db_version, $wpdb;
 
 	// Upgrade versions prior to 2.9
 	if ( $wp_current_db_version < 11557 ) {
@@ -1978,6 +2084,22 @@ function pre_schema_upgrade() {
 		$wpdb->query("ALTER TABLE $wpdb->options DROP INDEX option_name");
 	}
 
+	// Multisite schema upgrades.
+	if ( $wp_current_db_version < 25448 && is_multisite() && ! defined( 'DO_NOT_UPGRADE_GLOBAL_TABLES' ) && is_main_network() ) {
+
+		// Upgrade verions prior to 3.7
+		if ( $wp_current_db_version < 25179 ) {
+			// New primary key for signups.
+			$wpdb->query( "ALTER TABLE $wpdb->signups ADD signup_id BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY FIRST" );
+			$wpdb->query( "ALTER TABLE $wpdb->signups DROP INDEX domain" );
+		}
+
+		if ( $wp_current_db_version < 25448 ) {
+			// Convert archived from enum to tinyint.
+			$wpdb->query( "ALTER TABLE $wpdb->blogs CHANGE COLUMN archived archived varchar(1) NOT NULL default '0'" );
+			$wpdb->query( "ALTER TABLE $wpdb->blogs CHANGE COLUMN archived archived tinyint(2) NOT NULL default 0" );
+		}
+	}
 }
 
 /**

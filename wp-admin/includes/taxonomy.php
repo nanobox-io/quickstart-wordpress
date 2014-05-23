@@ -34,7 +34,8 @@ function category_exists($cat_name, $parent = 0) {
  * @return unknown
  */
 function get_category_to_edit( $id ) {
-	$category = get_category( $id, OBJECT, 'edit' );
+	$category = get_term( $id, 'category', OBJECT, 'edit' );
+	_make_cat_compat( $category );
 	return $category;
 }
 
@@ -155,7 +156,8 @@ function wp_update_category($catarr) {
 		return false;
 
 	// First, get all of the original fields
-	$category = get_category($cat_ID, ARRAY_A);
+	$category = get_term( $cat_ID, 'category', ARRAY_A );
+	_make_cat_compat( $category );
 
 	// Escape data pulled from DB.
 	$category = wp_slash($category);
@@ -231,6 +233,17 @@ function get_terms_to_edit( $post_id, $taxonomy = 'post_tag' ) {
 		$tag_names[] = $tag->name;
 	$tags_to_edit = join( ',', $tag_names );
 	$tags_to_edit = esc_attr( $tags_to_edit );
+
+	/**
+	 * Filter the comma-separated list of terms available to edit.
+	 *
+	 * @since 2.8.0
+	 *
+	 * @see get_terms_to_edit()
+	 *
+	 * @param array  $tags_to_edit An array of terms.
+	 * @param string $taxonomy     The taxonomy for which to retrieve terms. Default 'post_tag'.
+	 */
 	$tags_to_edit = apply_filters( 'terms_to_edit', $tags_to_edit, $taxonomy );
 
 	return $tags_to_edit;

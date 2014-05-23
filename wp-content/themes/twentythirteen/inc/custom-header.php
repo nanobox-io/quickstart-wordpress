@@ -1,7 +1,8 @@
 <?php
 /**
- * Implements a custom header for Twenty Thirteen.
- * See http://codex.wordpress.org/Custom_Headers
+ * Implement a custom header for Twenty Thirteen
+ *
+ * @link http://codex.wordpress.org/Custom_Headers
  *
  * @package WordPress
  * @subpackage Twenty_Thirteen
@@ -9,7 +10,7 @@
  */
 
 /**
- * Sets up the WordPress core custom header arguments and settings.
+ * Set up the WordPress core custom header arguments and settings.
  *
  * @uses add_theme_support() to register support for 3.4 and up.
  * @uses twentythirteen_header_style() to style front-end.
@@ -59,15 +60,15 @@ function twentythirteen_custom_header_setup() {
 		),
 	) );
 }
-add_action( 'after_setup_theme', 'twentythirteen_custom_header_setup' );
+add_action( 'after_setup_theme', 'twentythirteen_custom_header_setup', 11 );
 
 /**
- * Loads our special font CSS files.
+ * Load our special font CSS files.
  *
  * @since Twenty Thirteen 1.0
  */
 function twentythirteen_custom_header_fonts() {
-	// Add Open Sans and Bitter fonts.
+	// Add Source Sans Pro and Bitter fonts.
 	wp_enqueue_style( 'twentythirteen-fonts', twentythirteen_fonts_url(), array(), null );
 
 	// Add Genericons font.
@@ -76,7 +77,7 @@ function twentythirteen_custom_header_fonts() {
 add_action( 'admin_print_styles-appearance_page_custom-header', 'twentythirteen_custom_header_fonts' );
 
 /**
- * Styles the header text displayed on the blog.
+ * Style the header text displayed on the blog.
  *
  * get_header_textcolor() options: Hide text (returns 'blank'), or any hex value.
  *
@@ -134,7 +135,7 @@ function twentythirteen_header_style() {
 }
 
 /**
- * Styles the header image displayed on the Appearance > Header admin panel.
+ * Style the header image displayed on the Appearance > Header admin panel.
  *
  * @since Twenty Thirteen 1.0
  */
@@ -198,7 +199,8 @@ function twentythirteen_admin_header_style() {
 }
 
 /**
- * Outputs markup to be displayed on the Appearance > Header admin panel.
+ * Output markup to be displayed on the Appearance > Header admin panel.
+ *
  * This callback overrides the default markup displayed there.
  *
  * @since Twenty Thirteen 1.0
