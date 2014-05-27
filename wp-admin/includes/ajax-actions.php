@@ -26,12 +26,39 @@ function wp_ajax_nopriv_heartbeat() {
 
 	if ( ! empty($_POST['data']) ) {
 		$data = wp_unslash( (array) $_POST['data'] );
+
+		/**
+		 * Filter Heartbeat AJAX response in no-privilege environments.
+		 *
+		 * @since 3.6.0
+		 *
+		 * @param array|object $response  The no-priv Heartbeat response object or array.
+		 * @param array        $data      An array of data passed via $_POST.
+		 * @param string       $screen_id The screen id.
+		 */
 		$response = apply_filters( 'heartbeat_nopriv_received', $response, $data, $screen_id );
 	}
 
+	/**
+	 * Filter Heartbeat AJAX response when no data is passed.
+	 *
+	 * @since 3.6.0
+	 *
+	 * @param array|object $response  The Heartbeat response object or array.
+	 * @param string       $screen_id The screen id.
+	 */
 	$response = apply_filters( 'heartbeat_nopriv_send', $response, $screen_id );
 
-	// Allow the transport to be replaced with long-polling easily
+	/**
+	 * Fires when Heartbeat ticks in no-privilege environments.
+	 *
+	 * Allows the transport to be easily replaced with long-polling.
+	 *
+	 * @since 3.6.0
+	 *
+	 * @param array|object $response  The no-priv Heartbeat response.
+	 * @param string       $screen_id The screen id.
+	 */
 	do_action( 'heartbeat_nopriv_tick', $response, $screen_id );
 
 	// send the current time according to the server
@@ -87,7 +114,7 @@ function wp_ajax_ajax_tag_search() {
 	if ( strlen( $s ) < 2 )
 		wp_die(); // require 2 chars for matching
 
-	$results = $wpdb->get_col( $wpdb->prepare( "SELECT t.name FROM $wpdb->term_taxonomy AS tt INNER JOIN $wpdb->terms AS t ON tt.term_id = t.term_id WHERE tt.taxonomy = %s AND t.name LIKE (%s)", $taxonomy, '%' . like_escape( $s ) . '%' ) );
+	$results = get_terms( $taxonomy, array( 'name__like' => $s, 'fields' => 'names', 'hide_empty' => false ) );
 
 	echo join( $results, "\n" );
 	wp_die();
@@ -163,22 +190,34 @@ function wp_ajax_autocomplete_user() {
 	if ( ! is_multisite() || ! current_user_can( 'promote_users' ) || wp_is_large_network( 'users' ) )
 		wp_die( -1 );
 
+	/** This filter is documented in wp-admin/user-new.php */
 	if ( ! is_super_admin() && ! apply_filters( 'autocomplete_users_for_site_admins', false ) )
 		wp_die( -1 );
 
 	$return = array();
 
 	// Check the type of request
-	if ( isset( $_REQUEST['autocomplete_type'] ) )
+	// Current allowed values are `add` and `search`
+	if ( isset( $_REQUEST['autocomplete_type'] ) && 'search' === $_REQUEST['autocomplete_type'] ) {
 		$type = $_REQUEST['autocomplete_type'];
-	else
+	} else {
 		$type = 'add';
+	}
+
+	// Check the desired field for value
+	// Current allowed values are `user_email` and `user_login`
+	if ( isset( $_REQUEST['autocomplete_field'] ) && 'user_email' === $_REQUEST['autocomplete_field'] ) {
+		$field = $_REQUEST['autocomplete_field'];
+	} else {
+		$field = 'user_login';
+	}
 
 	// Exclude current users of this blog
-	if ( isset( $_REQUEST['site_id'] ) )
+	if ( isset( $_REQUEST['site_id'] ) ) {
 		$id = absint( $_REQUEST['site_id'] );
-	else
+	} else {
 		$id = get_current_blog_id();
+	}
 
 	$include_blog_users = ( $type == 'search' ? get_users( array( 'blog_id' => $id, 'fields' => 'ID' ) ) : array() );
 	$exclude_blog_users = ( $type == 'add' ? get_users( array( 'blog_id' => $id, 'fields' => 'ID' ) ) : array() );
@@ -195,7 +234,7 @@ function wp_ajax_autocomplete_user() {
 		$return[] = array(
 			/* translators: 1: user_login, 2: user_email */
 			'label' => sprintf( __( '%1$s (%2$s)' ), $user->user_login, $user->user_email ),
-			'value' => $user->user_login,
+			'value' => $user->$field,
 		);
 	}
 
@@ -205,18 +244,14 @@ function wp_ajax_autocomplete_user() {
 function wp_ajax_dashboard_widgets() {
 	require_once ABSPATH . 'wp-admin/includes/dashboard.php';
 
+	$pagenow = $_GET['pagenow'];
+	if ( $pagenow === 'dashboard-user' || $pagenow === 'dashboard-network' || $pagenow === 'dashboard' ) {
+		set_current_screen( $pagenow );
+	}
+
 	switch ( $_GET['widget'] ) {
-		case 'dashboard_incoming_links' :
-			wp_dashboard_incoming_links();
-			break;
 		case 'dashboard_primary' :
 			wp_dashboard_primary();
-			break;
-		case 'dashboard_secondary' :
-			wp_dashboard_secondary();
-			break;
-		case 'dashboard_plugins' :
-			wp_dashboard_plugins();
 			break;
 	}
 	wp_die();
@@ -235,16 +270,17 @@ function wp_ajax_logged_in() {
  *
  * Contrary to normal success AJAX response ("1"), die with time() on success.
  *
- * @since 2.7
+ * @since 2.7.0
  *
  * @param int $comment_id
  * @return die
  */
 function _wp_ajax_delete_comment_response( $comment_id, $delta = -1 ) {
-	$total = (int) @$_POST['_total'];
-	$per_page = (int) @$_POST['_per_page'];
-	$page = (int) @$_POST['_page'];
-	$url = esc_url_raw( @$_POST['_url'] );
+	$total    = isset( $_POST['_total'] )    ? (int) $_POST['_total']    : 0;
+	$per_page = isset( $_POST['_per_page'] ) ? (int) $_POST['_per_page'] : 0;
+	$page     = isset( $_POST['_page'] )     ? (int) $_POST['_page']     : 0;
+	$url      = isset( $_POST['_url'] )      ? esc_url_raw( $_POST['_url'] ) : '';
+
 	// JS didn't send us everything we need to know. Just die with success message
 	if ( !$total || !$per_page || !$page || !$url )
 		wp_die( time() );
@@ -546,7 +582,7 @@ function wp_ajax_dim_comment() {
 		wp_die( -1 );
 
 	$current = wp_get_comment_status( $comment->comment_ID );
-	if ( $_POST['new'] == $current )
+	if ( isset( $_POST['new'] ) && $_POST['new'] == $current )
 		wp_die( time() );
 
 	check_ajax_referer( "approve-comment_$id" );
@@ -694,9 +730,18 @@ function wp_ajax_get_comments( $action ) {
 
 	check_ajax_referer( $action );
 
+	if ( empty( $post_id ) && ! empty( $_REQUEST['p'] ) ) {
+		$id = absint( $_REQUEST['p'] );
+		if ( ! empty( $id ) )
+			$post_id = $id;
+	}
+
+	if ( empty( $post_id ) )
+		wp_die( -1 );
+
 	$wp_list_table = _get_list_table( 'WP_Post_Comments_List_Table', array( 'screen' => 'edit-comments' ) );
 
-	if ( !current_user_can( 'edit_post', $post_id ) )
+	if ( ! current_user_can( 'edit_post', $post_id ) )
 		wp_die( -1 );
 
 	$wp_list_table->prepare_items();
@@ -750,6 +795,9 @@ function wp_ajax_replyto_comment( $action ) {
 		$comment_author_url   = wp_slash( $user->user_url );
 		$comment_content      = trim($_POST['content']);
 		if ( current_user_can( 'unfiltered_html' ) ) {
+			if ( ! isset( $_POST['_wp_unfiltered_html_comment'] ) )
+				$_POST['_wp_unfiltered_html_comment'] = '';
+
 			if ( wp_create_nonce( 'unfiltered-html-comment' ) != $_POST['_wp_unfiltered_html_comment'] ) {
 				kses_remove_filters(); // start with a clean slate
 				kses_init_filters(); // set up the filters
@@ -762,7 +810,9 @@ function wp_ajax_replyto_comment( $action ) {
 	if ( '' == $comment_content )
 		wp_die( __( 'ERROR: please type a comment.' ) );
 
-	$comment_parent = absint($_POST['comment_ID']);
+	$comment_parent = 0;
+	if ( isset( $_POST['comment_ID'] ) )
+		$comment_parent = absint( $_POST['comment_ID'] );
 	$comment_auto_approved = false;
 	$commentdata = compact('comment_post_ID', 'comment_author', 'comment_author_email', 'comment_author_url', 'comment_content', 'comment_type', 'comment_parent', 'user_ID');
 
@@ -783,19 +833,18 @@ function wp_ajax_replyto_comment( $action ) {
 	$position = ( isset($_POST['position']) && (int) $_POST['position'] ) ? (int) $_POST['position'] : '-1';
 
 	ob_start();
-		if ( 'dashboard' == $_REQUEST['mode'] ) {
-			require_once( ABSPATH . 'wp-admin/includes/dashboard.php' );
-			_wp_dashboard_recent_comments_row( $comment );
+	if ( isset( $_REQUEST['mode'] ) && 'dashboard' == $_REQUEST['mode'] ) {
+		require_once( ABSPATH . 'wp-admin/includes/dashboard.php' );
+		_wp_dashboard_recent_comments_row( $comment );
+	} else {
+		if ( isset( $_REQUEST['mode'] ) && 'single' == $_REQUEST['mode'] ) {
+			$wp_list_table = _get_list_table('WP_Post_Comments_List_Table', array( 'screen' => 'edit-comments' ) );
 		} else {
-			if ( 'single' == $_REQUEST['mode'] ) {
-				$wp_list_table = _get_list_table('WP_Post_Comments_List_Table', array( 'screen' => 'edit-comments' ) );
-			} else {
-				$wp_list_table = _get_list_table('WP_Comments_List_Table', array( 'screen' => 'edit-comments' ) );
-			}
-			$wp_list_table->single_row( $comment );
+			$wp_list_table = _get_list_table('WP_Comments_List_Table', array( 'screen' => 'edit-comments' ) );
 		}
-		$comment_list_item = ob_get_contents();
-	ob_end_clean();
+		$wp_list_table->single_row( $comment );
+	}
+	$comment_list_item = ob_get_clean();
 
 	$response =  array(
 		'what' => 'comment',
@@ -824,7 +873,8 @@ function wp_ajax_edit_comment() {
 	if ( '' == $_POST['content'] )
 		wp_die( __( 'ERROR: please type a comment.' ) );
 
-	$_POST['comment_status'] = $_POST['status'];
+	if ( isset( $_POST['status'] ) )
+		$_POST['comment_status'] = $_POST['status'];
 	edit_comment();
 
 	$position = ( isset($_POST['position']) && (int) $_POST['position']) ? (int) $_POST['position'] : '-1';
@@ -834,11 +884,12 @@ function wp_ajax_edit_comment() {
 	$wp_list_table = _get_list_table( $checkbox ? 'WP_Comments_List_Table' : 'WP_Post_Comments_List_Table', array( 'screen' => 'edit-comments' ) );
 
 	$comment = get_comment( $comment_id );
+	if ( empty( $comment->comment_ID ) )
+		wp_die( -1 );
 
 	ob_start();
-		$wp_list_table->single_row( $comment );
-		$comment_list_item = ob_get_contents();
-	ob_end_clean();
+	$wp_list_table->single_row( $comment );
+	$comment_list_item = ob_get_clean();
 
 	$x = new WP_Ajax_Response();
 
@@ -905,6 +956,14 @@ function wp_ajax_add_menu_item() {
 		}
 	}
 
+	/**
+	 * Filter the Walker class used when adding nav menu items.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param string $class   The walker class to use. Default 'Walker_Nav_Menu_Edit'.
+	 * @param int    $menu_id The menu id, derived from $_POST['menu'].
+	 */
 	$walker_class_name = apply_filters( 'wp_edit_nav_menu_walker', 'Walker_Nav_Menu_Edit', $_POST['menu'] );
 
 	if ( ! class_exists( $walker_class_name ) )
@@ -1041,69 +1100,6 @@ function wp_ajax_add_user( $action ) {
 	$x->send();
 }
 
-function wp_ajax_autosave() {
-	define( 'DOING_AUTOSAVE', true );
-
-	check_ajax_referer( 'autosave', 'autosavenonce' );
-
-	$_POST['post_category'] = explode(",", $_POST['catslist']);
-	if ( $_POST['post_type'] == 'page' || empty($_POST['post_category']) )
-		unset($_POST['post_category']);
-
-	$data = '';
-	$supplemental = array();
-	$id = $revision_id = 0;
-
-	$post_id = (int) $_POST['post_id'];
-	$_POST['ID'] = $_POST['post_ID'] = $post_id;
-	$post = get_post($post_id);
-	if ( 'auto-draft' == $post->post_status )
-		$_POST['post_status'] = 'draft';
-
-	if ( 'page' == $post->post_type ) {
-		if ( !current_user_can('edit_page', $post->ID) )
-			wp_die( __( 'You are not allowed to edit this page.' ) );
-	} else {
-		if ( !current_user_can('edit_post', $post->ID) )
-			wp_die( __( 'You are not allowed to edit this post.' ) );
-	}
-
-	if ( ! empty( $_POST['autosave'] ) ) {
-		if ( ! wp_check_post_lock( $post->ID ) && get_current_user_id() == $post->post_author && ( 'auto-draft' == $post->post_status || 'draft' == $post->post_status ) ) {
-			// Drafts and auto-drafts are just overwritten by autosave for the same user if the post is not locked
-			$id = edit_post();
-		} else {
-			// Non drafts or other users drafts are not overwritten. The autosave is stored in a special post revision for each user.
-			$revision_id = wp_create_post_autosave( $post->ID );
-			if ( is_wp_error($revision_id) )
-				$id = $revision_id;
-			else
-				$id = $post->ID;
-		}
-
-		if ( ! is_wp_error($id) ) {
-			/* translators: draft saved date format, see http://php.net/date */
-			$draft_saved_date_format = __('g:i:s a');
-			/* translators: %s: date and time */
-			$data = sprintf( __('Draft saved at %s.'), date_i18n( $draft_saved_date_format ) );
-		}
-	} else {
-		if ( ! empty( $_POST['auto_draft'] ) )
-			$id = 0; // This tells us it didn't actually save
-		else
-			$id = $post->ID;
-	}
-
-	// @todo Consider exposing any errors, rather than having 'Saving draft...'
-	$x = new WP_Ajax_Response( array(
-		'what' => 'autosave',
-		'id' => $id,
-		'data' => $data,
-		'supplemental' => $supplemental
-	) );
-	$x->send();
-}
-
 function wp_ajax_closed_postboxes() {
 	check_ajax_referer( 'closedpostboxes', 'closedpostboxesnonce' );
 	$closed = isset( $_POST['closed'] ) ? explode( ',', $_POST['closed']) : array();
@@ -1177,7 +1173,16 @@ function wp_ajax_menu_get_metabox() {
 	}
 
 	if ( ! empty( $_POST['item-object'] ) && isset( $items[$_POST['item-object']] ) ) {
-		$item = apply_filters( 'nav_menu_meta_box_object', $items[ $_POST['item-object'] ] );
+		$menus_meta_box_object = $items[ $_POST['item-object'] ];
+		/**
+		 * Filter a nav menu meta box object.
+		 *
+		 * @since 3.0.0
+		 *
+		 * @param object $menus_meta_box_object A nav menu meta box object, such as Page,
+		 *                                      Post, Category, Tag, etc.
+		 */
+		$item = apply_filters( 'nav_menu_meta_box_object', $menus_meta_box_object );
 		ob_start();
 		call_user_func_array($callback, array(
 			null,
@@ -1313,7 +1318,7 @@ function wp_ajax_inline_save() {
 	$data['excerpt'] = $post['post_excerpt'];
 
 	// rename
-	$data['user_ID'] = $GLOBALS['user_ID'];
+	$data['user_ID'] = get_current_user_id();
 
 	if ( isset($data['post_parent']) )
 		$data['parent_id'] = $data['post_parent'];
@@ -1425,9 +1430,11 @@ function wp_ajax_find_posts() {
 	if ( ! $posts )
 		wp_die( __('No items found.') );
 
-	$html = '<table class="widefat" cellspacing="0"><thead><tr><th class="found-radio"><br /></th><th>'.__('Title').'</th><th class="no-break">'.__('Type').'</th><th class="no-break">'.__('Date').'</th><th class="no-break">'.__('Status').'</th></tr></thead><tbody>';
+	$html = '<table class="widefat"><thead><tr><th class="found-radio"><br /></th><th>'.__('Title').'</th><th class="no-break">'.__('Type').'</th><th class="no-break">'.__('Date').'</th><th class="no-break">'.__('Status').'</th></tr></thead><tbody>';
+	$alt = '';
 	foreach ( $posts as $post ) {
 		$title = trim( $post->post_title ) ? $post->post_title : __( '(no title)' );
+		$alt = ( 'alternate' == $alt ) ? '' : 'alternate';
 
 		switch ( $post->post_status ) {
 			case 'publish' :
@@ -1452,17 +1459,13 @@ function wp_ajax_find_posts() {
 			$time = mysql2date(__('Y/m/d'), $post->post_date);
 		}
 
-		$html .= '<tr class="found-posts"><td class="found-radio"><input type="radio" id="found-'.$post->ID.'" name="found_post_id" value="' . esc_attr($post->ID) . '"></td>';
+		$html .= '<tr class="' . trim( 'found-posts ' . $alt ) . '"><td class="found-radio"><input type="radio" id="found-'.$post->ID.'" name="found_post_id" value="' . esc_attr($post->ID) . '"></td>';
 		$html .= '<td><label for="found-'.$post->ID.'">' . esc_html( $title ) . '</label></td><td class="no-break">' . esc_html( $post_types[$post->post_type]->labels->singular_name ) . '</td><td class="no-break">'.esc_html( $time ) . '</td><td class="no-break">' . esc_html( $stat ). ' </td></tr>' . "\n\n";
 	}
 
 	$html .= '</tbody></table>';
 
-	$x = new WP_Ajax_Response();
-	$x->add( array(
-		'data' => $html
-	));
-	$x->send();
+	wp_send_json_success( $html );
 }
 
 function wp_ajax_widgets_order() {
@@ -1506,9 +1509,22 @@ function wp_ajax_save_widget() {
 
 	unset( $_POST['savewidgets'], $_POST['action'] );
 
-	do_action('load-widgets.php');
-	do_action('widgets.php');
-	do_action('sidebar_admin_setup');
+	/**
+	 * Fires early when editing the widgets displayed in sidebars.
+	 *
+	 * @since 2.8.0
+	 */
+	do_action( 'load-widgets.php' );
+
+	/**
+	 * Fires early when editing the widgets displayed in sidebars.
+	 *
+	 * @since 2.8.0
+	 */
+	do_action( 'widgets.php' );
+
+	/** This action is documented in wp-admin/widgets.php */
+	do_action( 'sidebar_admin_setup' );
 
 	$id_base = $_POST['id_base'];
 	$widget_id = $_POST['widget-id'];
@@ -1565,6 +1581,11 @@ function wp_ajax_save_widget() {
 		call_user_func_array( $form['callback'], $form['params'] );
 
 	wp_die();
+}
+
+function wp_ajax_update_widget() {
+	global $wp_customize;
+	$wp_customize->widgets->wp_ajax_update_widget();
 }
 
 function wp_ajax_upload_attachment() {
@@ -1691,11 +1712,11 @@ function wp_ajax_set_post_thumbnail() {
 }
 
 function wp_ajax_date_format() {
-	wp_die( date_i18n( sanitize_option( 'date_format', $_POST['date'] ) ) );
+	wp_die( date_i18n( sanitize_option( 'date_format', wp_unslash( $_POST['date'] ) ) ) );
 }
 
 function wp_ajax_time_format() {
-	wp_die( date_i18n( sanitize_option( 'time_format', $_POST['date'] ) ) );
+	wp_die( date_i18n( sanitize_option( 'time_format', wp_unslash( $_POST['date'] ) ) ) );
 }
 
 function wp_ajax_wp_fullscreen_save_post() {
@@ -1715,16 +1736,8 @@ function wp_ajax_wp_fullscreen_save_post() {
 
 	$post_id = edit_post();
 
-	if ( is_wp_error($post_id) ) {
-		if ( $post_id->get_error_message() )
-			$message = $post_id->get_error_message();
-		else
-			$message = __('Save failed');
-
-		echo json_encode( array( 'message' => $message, 'last_edited' => '' ) );
-		wp_die();
-	} else {
-		$message = __('Saved.');
+	if ( is_wp_error( $post_id ) ) {
+		wp_send_json_error();
 	}
 
 	if ( $post ) {
@@ -1735,15 +1748,14 @@ function wp_ajax_wp_fullscreen_save_post() {
 		$last_time = date_i18n( get_option('time_format') );
 	}
 
-	if ( $last_id = get_post_meta($post_id, '_edit_last', true) ) {
-		$last_user = get_userdata($last_id);
+	if ( $last_id = get_post_meta( $post_id, '_edit_last', true ) ) {
+		$last_user = get_userdata( $last_id );
 		$last_edited = sprintf( __('Last edited by %1$s on %2$s at %3$s'), esc_html( $last_user->display_name ), $last_date, $last_time );
 	} else {
 		$last_edited = sprintf( __('Last edited on %1$s at %2$s'), $last_date, $last_time );
 	}
 
-	echo json_encode( array( 'message' => $message, 'last_edited' => $last_edited ) );
-	wp_die();
+	wp_send_json_success( array( 'last_edited' => $last_edited ) );
 }
 
 function wp_ajax_wp_remove_post_lock() {
@@ -1762,7 +1774,15 @@ function wp_ajax_wp_remove_post_lock() {
 	if ( $active_lock[1] != get_current_user_id() )
 		wp_die( 0 );
 
-	$new_lock = ( time() - apply_filters( 'wp_check_post_lock_window', 120 ) + 5 ) . ':' . $active_lock[1];
+	/**
+	 * Filter the post lock window duration.
+	 *
+	 * @since 3.3.0
+	 *
+	 * @param int $interval The interval in seconds the post lock duration
+	 *                      should last, plus 5 seconds. Default 150.
+	 */
+	$new_lock = ( time() - apply_filters( 'wp_check_post_lock_window', 150 ) + 5 ) . ':' . $active_lock[1];
 	update_post_meta( $post_id, '_edit_lock', $new_lock, implode( ':', $active_lock ) );
 	wp_die( 1 );
 }
@@ -1833,6 +1853,17 @@ function wp_ajax_query_attachments() {
 	if ( current_user_can( get_post_type_object( 'attachment' )->cap->read_private_posts ) )
 		$query['post_status'] .= ',private';
 
+	/**
+	 * Filter the arguments passed to WP_Query during an AJAX
+	 * call for querying attachments.
+	 *
+	 * @since 3.7.0
+	 *
+	 * @see WP_Query::parse_query()
+	 *
+	 * @param array $query An array of query variables.
+	 */
+	$query = apply_filters( 'ajax_query_attachments_args', $query );
 	$query = new WP_Query( $query );
 
 	$posts = array_map( 'wp_prepare_attachment_for_js', $query->posts );
@@ -1911,6 +1942,7 @@ function wp_ajax_save_attachment_compat() {
 	if ( 'attachment' != $post['post_type'] )
 		wp_send_json_error();
 
+	/** This filter is documented in wp-admin/includes/media.php */
 	$post = apply_filters( 'attachment_fields_to_save', $post, $attachment_data );
 
 	if ( isset( $post['errors'] ) ) {
@@ -2013,6 +2045,7 @@ function wp_ajax_send_attachment_to_editor() {
 		$html = stripslashes_deep( $_POST['html'] );
 	}
 
+	/** This filter is documented in wp-admin/includes/media.php */
 	$html = apply_filters( 'media_send_to_editor', $html, $id, $attachment );
 
 	wp_send_json_success( $html );
@@ -2053,6 +2086,7 @@ function wp_ajax_send_link_to_editor() {
 		&& ( 'audio' == $ext_type || 'video' == $ext_type ) )
 			$type = $ext_type;
 
+	/** This filter is documented in wp-admin/includes/media.php */
 	$html = apply_filters( $type . '_send_to_editor_url', $html, $src, $title );
 
 	wp_send_json_success( $html );
@@ -2082,13 +2116,40 @@ function wp_ajax_heartbeat() {
 		$screen_id = 'front';
 
 	if ( ! empty($_POST['data']) ) {
-		$data = (array) $_POST['data'];
+		$data = wp_unslash( (array) $_POST['data'] );
+
+		/**
+		 * Filter the Heartbeat response received.
+		 *
+		 * @since 3.6.0
+		 *
+		 * @param array|object $response  The Heartbeat response object or array.
+		 * @param array        $data      The $_POST data sent.
+		 * @param string       $screen_id The screen id.
+		 */
 		$response = apply_filters( 'heartbeat_received', $response, $data, $screen_id );
 	}
 
+	/**
+	 * Filter the Heartbeat response sent.
+	 *
+	 * @since 3.6.0
+	 *
+	 * @param array|object $response  The Heartbeat response object or array.
+	 * @param string       $screen_id The screen id.
+	 */
 	$response = apply_filters( 'heartbeat_send', $response, $screen_id );
 
-	// Allow the transport to be replaced with long-polling easily
+	/**
+	 * Fires when Heartbeat ticks in logged-in environments.
+	 *
+	 * Allows the transport to be easily replaced with long-polling.
+	 *
+	 * @since 3.6.0
+	 *
+	 * @param array|object $response  The Heartbeat response object or array.
+	 * @param string       $screen_id The screen id.
+	 */
 	do_action( 'heartbeat_tick', $response, $screen_id );
 
 	// Send the current time according to the server
@@ -2122,4 +2183,69 @@ function wp_ajax_get_revision_diffs() {
 		);
 	}
 	wp_send_json_success( $return );
+}
+
+/**
+ * Auto-save the selected color scheme for a user's own profile.
+ *
+ * @since  3.8.0
+ */
+function wp_ajax_save_user_color_scheme() {
+	global $_wp_admin_css_colors;
+
+	check_ajax_referer( 'save-color-scheme', 'nonce' );
+
+	$color_scheme = sanitize_key( $_POST['color_scheme'] );
+
+	if ( ! isset( $_wp_admin_css_colors[ $color_scheme ] ) ) {
+		wp_send_json_error();
+	}
+
+	update_user_meta( get_current_user_id(), 'admin_color', $color_scheme );
+	wp_send_json_success();
+}
+
+/**
+ * Get themes from themes_api().
+ *
+ * @since 3.9.0
+ */
+function wp_ajax_query_themes() {
+	global $themes_allowedtags, $theme_field_defaults;
+
+	if ( ! current_user_can( 'install_themes' ) ) {
+		wp_send_json_error();
+	}
+
+	$args = wp_parse_args( wp_unslash( $_REQUEST['request'] ), array(
+		'per_page' => 20,
+		'fields'   => $theme_field_defaults
+	) );
+
+	$old_filter = isset( $args['browse'] ) ? $args['browse'] : 'search';
+
+	/** This filter is documented in wp-admin/includes/class-wp-theme-install-list-table.php */
+	$args = apply_filters( 'install_themes_table_api_args_' . $old_filter, $args );
+
+	$api = themes_api( 'query_themes', $args );
+
+	if ( is_wp_error( $api ) ) {
+		wp_send_json_error();
+	}
+
+	$update_php = network_admin_url( 'update.php?action=install-theme' );
+	foreach ( $api->themes as &$theme ) {
+		$theme->install_url = add_query_arg( array(
+			'theme'    => $theme->slug,
+			'_wpnonce' => wp_create_nonce( 'install-theme_' . $theme->slug )
+		), $update_php );
+
+		$theme->name        = wp_kses( $theme->name, $themes_allowedtags );
+		$theme->author      = wp_kses( $theme->author, $themes_allowedtags );
+		$theme->version     = wp_kses( $theme->version, $themes_allowedtags );
+		$theme->description = wp_kses( $theme->description, $themes_allowedtags );
+		$theme->num_ratings = sprintf( _n( '(based on %s rating)', '(based on %s ratings)', $theme->num_ratings ), number_format_i18n( $theme->num_ratings ) );
+	}
+
+	wp_send_json_success( $api );
 }

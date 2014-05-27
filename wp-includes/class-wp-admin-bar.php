@@ -46,7 +46,11 @@ class WP_Admin_Bar {
 		add_action( 'admin_head', 'wp_admin_bar_header' );
 
 		if ( current_theme_supports( 'admin-bar' ) ) {
-			$admin_bar_args = get_theme_support( 'admin-bar' ); // add_theme_support( 'admin-bar', array( 'callback' => '__return_false') );
+			/**
+			 * To remove the default padding styles from WordPress for the Toolbar, use the following code:
+			 * add_theme_support( 'admin-bar', array( 'callback' => '__return_false' ) );
+			 */
+			$admin_bar_args = get_theme_support( 'admin-bar' );
 			$header_callback = $admin_bar_args[0]['callback'];
 		}
 
@@ -58,6 +62,11 @@ class WP_Admin_Bar {
 		wp_enqueue_script( 'admin-bar' );
 		wp_enqueue_style( 'admin-bar' );
 
+		/**
+		 * Fires after WP_Admin_Bar is initialized.
+		 *
+		 * @since 3.1.0
+		 */
 		do_action( 'admin_bar_init' );
 	}
 
@@ -72,13 +81,17 @@ class WP_Admin_Bar {
 	/**
 	 * Add a node to the menu.
 	 *
-	 * @param array $args - The arguments for each node.
-	 * - id         - string    - The ID of the item.
-	 * - title      - string    - The title of the node.
-	 * - parent     - string    - The ID of the parent node. Optional.
-	 * - href       - string    - The link for the item. Optional.
-	 * - group      - boolean   - If the node is a group. Optional. Default false.
-	 * - meta       - array     - Meta data including the following keys: html, class, onclick, target, title, tabindex.
+	 * @param array $args {
+	 *     Arguments for adding a node.
+	 *
+	 *     @type string $id     ID of the item.
+	 *     @type string $title  Title of the node.
+	 *     @type string $parent Optional. ID of the parent node.
+	 *     @type string $href   Optional. Link for the item.
+	 *     @type bool   $group  Optional. Whether or not the node is a group. Default false.
+	 *     @type array  $meta   Meta data including the following keys: 'html', 'class', 'rel',
+	 *                          'onclick', 'target', 'title', 'tabindex'. Default empty.
+	 * }
 	 */
 	public function add_node( $args ) {
 		// Shim for old method signature: add_node( $parent_id, $menu_obj, $args )
@@ -178,10 +191,14 @@ class WP_Admin_Bar {
 	 *
 	 * @since 3.3.0
 	 *
-	 * @param array $args - The arguments for each node.
-	 * - id         - string    - The ID of the item.
-	 * - parent     - string    - The ID of the parent node. Optional. Default root.
-	 * - meta       - array     - Meta data including the following keys: class, onclick, target, title.
+	 * @param array $args {
+	 *     Array of arguments for adding a group.
+	 *
+	 *     @type string $id     ID of the item.
+	 *     @type string $parent Optional. ID of the parent node. Default 'root'.
+	 *     @type array  $meta   Meta data for the group including the following keys:
+	 *                         'class', 'onclick', 'target', and 'title'.
+	 * }
 	 */
 	final public function add_group( $args ) {
 		$args['group'] = true;
@@ -429,6 +446,9 @@ class WP_Admin_Bar {
 				if ( ! empty( $node->meta['title'] ) ) :
 					?> title="<?php echo esc_attr( $node->meta['title'] ); ?>"<?php
 				endif;
+				if ( ! empty( $node->meta['rel'] ) ) :
+					?> rel="<?php echo esc_attr( $node->meta['rel'] ); ?>"<?php
+				endif;
 				?>><?php
 			else:
 				?><div class="ab-item ab-empty-item" <?php echo $aria_attributes;
@@ -473,6 +493,7 @@ class WP_Admin_Bar {
 		add_action( 'admin_bar_menu', 'wp_admin_bar_my_account_item', 7 );
 
 		// Site related.
+		add_action( 'admin_bar_menu', 'wp_admin_bar_sidebar_toggle', 0 );
 		add_action( 'admin_bar_menu', 'wp_admin_bar_wp_menu', 10 );
 		add_action( 'admin_bar_menu', 'wp_admin_bar_my_sites_menu', 20 );
 		add_action( 'admin_bar_menu', 'wp_admin_bar_site_menu', 30 );
@@ -487,6 +508,11 @@ class WP_Admin_Bar {
 
 		add_action( 'admin_bar_menu', 'wp_admin_bar_add_secondary_groups', 200 );
 
+		/**
+		 * Fires after menus are added to the menu bar.
+		 *
+		 * @since 3.1.0
+		 */
 		do_action( 'add_admin_bar_menus' );
 	}
 }

@@ -104,11 +104,13 @@ function wp_check_php_mysql_versions() {
 	$php_version = phpversion();
 	if ( version_compare( $required_php_version, $php_version, '>' ) ) {
 		wp_load_translations_early();
+		header( 'Content-Type: text/html; charset=utf-8' );
 		die( sprintf( __( 'Your server is running PHP version %1$s but WordPress %2$s requires at least %3$s.' ), $php_version, $wp_version, $required_php_version ) );
 	}
 
-	if ( ! extension_loaded( 'mysql' ) && ! file_exists( WP_CONTENT_DIR . '/db.php' ) ) {
+	if ( ! extension_loaded( 'mysql' ) && ! extension_loaded( 'mysqli' ) && ! file_exists( WP_CONTENT_DIR . '/db.php' ) ) {
 		wp_load_translations_early();
+		 header( 'Content-Type: text/html; charset=utf-8' );
 		die( __( 'Your PHP installation appears to be missing the MySQL extension which is required by WordPress.' ) );
 	}
 }
@@ -196,30 +198,21 @@ function timer_start() {
 }
 
 /**
- * Return and/or display the time from the page start to when function is called.
- *
- * You can get the results and print them by doing:
- * <code>
- * $nTimePageTookToExecute = timer_stop();
- * echo $nTimePageTookToExecute;
- * </code>
- *
- * Or instead, you can do:
- * <code>
- * timer_stop(1);
- * </code>
- * which will do what the above does. If you need the result, you can assign it to a variable, but
- * in most cases, you only need to echo it.
+ * Retrieve or display the time from the page start to when function is called.
  *
  * @since 0.71
- * @global float $timestart Seconds from when timer_start() is called
- * @global float $timeend Seconds from when function is called
  *
- * @param int $display Use '0' or null to not echo anything and 1 to echo the total time
- * @param int $precision The amount of digits from the right of the decimal to display. Default is 3.
- * @return float The "second.microsecond" finished time calculation
+ * @global float $timestart Seconds from when timer_start() is called.
+ * @global float $timeend   Seconds from when function is called.
+ *
+ * @param int $display   Whether to echo or return the results. Accepts 0|false for return,
+ *                       1|true for echo. Default 0|false.
+ * @param int $precision The number of digits from the right of the decimal to display.
+ *                       Default 3.
+ * @return string The "second.microsecond" finished time calculation. The number is formatted
+ *                for human consumption, both localized and rounded.
  */
-function timer_stop( $display = 0, $precision = 3 ) { // if called like timer_stop(1), will echo $timetotal
+function timer_stop( $display = 0, $precision = 3 ) {
 	global $timestart, $timeend;
 	$timeend = microtime( true );
 	$timetotal = $timeend - $timestart;
@@ -370,6 +363,24 @@ function wp_set_wpdb_vars() {
 }
 
 /**
+ * Access/Modify private global variable $_wp_using_ext_object_cache
+ *
+ * Toggle $_wp_using_ext_object_cache on and off without directly touching global
+ *
+ * @since 3.7.0
+ *
+ * @param bool $using Whether external object cache is being used
+ * @return bool The current 'using' setting
+ */
+function wp_using_ext_object_cache( $using = null ) {
+	global $_wp_using_ext_object_cache;
+	$current_using = $_wp_using_ext_object_cache;
+	if ( null !== $using )
+		$_wp_using_ext_object_cache = $using;
+	return $current_using;
+}
+
+/**
  * Starts the WordPress object cache.
  *
  * If an object-cache.php file exists in the wp-content directory,
@@ -379,31 +390,33 @@ function wp_set_wpdb_vars() {
  * @since 3.0.0
  */
 function wp_start_object_cache() {
-	global $_wp_using_ext_object_cache, $blog_id;
+	global $blog_id;
 
 	$first_init = false;
  	if ( ! function_exists( 'wp_cache_init' ) ) {
 		if ( file_exists( WP_CONTENT_DIR . '/object-cache.php' ) ) {
 			require_once ( WP_CONTENT_DIR . '/object-cache.php' );
-			$_wp_using_ext_object_cache = true;
-		} else {
-			require_once ( ABSPATH . WPINC . '/cache.php' );
-			$_wp_using_ext_object_cache = false;
+			if ( function_exists( 'wp_cache_init' ) )
+				wp_using_ext_object_cache( true );
 		}
+
 		$first_init = true;
-	} else if ( !$_wp_using_ext_object_cache && file_exists( WP_CONTENT_DIR . '/object-cache.php' ) ) {
+	} else if ( ! wp_using_ext_object_cache() && file_exists( WP_CONTENT_DIR . '/object-cache.php' ) ) {
 		// Sometimes advanced-cache.php can load object-cache.php before it is loaded here.
 		// This breaks the function_exists check above and can result in $_wp_using_ext_object_cache
 		// being set incorrectly. Double check if an external cache exists.
-		$_wp_using_ext_object_cache = true;
+		wp_using_ext_object_cache( true );
 	}
+
+	if ( ! wp_using_ext_object_cache() )
+		require_once ( ABSPATH . WPINC . '/cache.php' );
 
 	// If cache supports reset, reset instead of init if already initialized.
 	// Reset signals to the cache that global IDs have changed and it may need to update keys
 	// and cleanup caches.
 	if ( ! $first_init && function_exists( 'wp_cache_switch_to_blog' ) )
 		wp_cache_switch_to_blog( $blog_id );
-	else
+	elseif ( function_exists( 'wp_cache_init' ) )
 		wp_cache_init();
 
 	if ( function_exists( 'wp_cache_add_global_groups' ) ) {
@@ -425,12 +438,12 @@ function wp_not_installed() {
 		if ( ! is_blog_installed() && ! defined( 'WP_INSTALLING' ) )
 			wp_die( __( 'The site you have requested is not installed properly. Please contact the system administrator.' ) );
 	} elseif ( ! is_blog_installed() && false === strpos( $_SERVER['PHP_SELF'], 'install.php' ) && !defined( 'WP_INSTALLING' ) ) {
-
-		$link = wp_guess_url() . '/wp-admin/install.php';
-
 		require( ABSPATH . WPINC . '/kses.php' );
 		require( ABSPATH . WPINC . '/pluggable.php' );
 		require( ABSPATH . WPINC . '/formatting.php' );
+
+		$link = wp_guess_url() . '/wp-admin/install.php';
+
 		wp_redirect( $link );
 		die();
 	}
@@ -552,6 +565,11 @@ function wp_magic_quotes() {
  * @since 1.2.0
  */
 function shutdown_action_hook() {
+	/**
+	 * Fires just before PHP shuts down execution.
+	 *
+	 * @since 1.2.0
+	 */
 	do_action( 'shutdown' );
 	wp_cache_close();
 }

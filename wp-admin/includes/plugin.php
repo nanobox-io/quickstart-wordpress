@@ -114,6 +114,9 @@ function get_plugin_data( $plugin_file, $markup = true, $translate = true ) {
  */
 function _get_plugin_data_markup_translate( $plugin_file, $plugin_data, $markup = true, $translate = true ) {
 
+	// Sanitize the plugin filename to a WP_PLUGIN_DIR relative path
+	$plugin_file = plugin_basename( $plugin_file );
+
 	// Translate fields
 	if ( $translate ) {
 		if ( $textdomain = $plugin_data['TextDomain'] ) {
@@ -534,10 +537,39 @@ function activate_plugin( $plugin, $redirect = '', $network_wide = false, $silen
 		if ( !empty($redirect) )
 			wp_redirect(add_query_arg('_error_nonce', wp_create_nonce('plugin-activation-error_' . $plugin), $redirect)); // we'll override this later if the plugin can be included without fatal error
 		ob_start();
-		include_once(WP_PLUGIN_DIR . '/' . $plugin);
+		wp_register_plugin_realpath( WP_PLUGIN_DIR . '/' . $plugin );
+		include_once( WP_PLUGIN_DIR . '/' . $plugin );
 
 		if ( ! $silent ) {
+			/**
+			 * Fires before a plugin is activated.
+			 *
+			 * If a plugin is silently activated (such as during an update),
+			 * this hook does not fire.
+			 *
+			 * @since 2.9.0
+			 *
+			 * @param string $plugin       Plugin path to main plugin file with plugin data.
+			 * @param bool   $network_wide Whether to enable the plugin for all sites in the network
+			 *                             or just the current site. Multisite only. Default is false.
+			 */
 			do_action( 'activate_plugin', $plugin, $network_wide );
+
+			/**
+			 * Fires as a specific plugin is being deactivated.
+			 *
+			 * This hook is the "deactivation" hook used internally by
+			 * register_deactivation_hook(). The dynamic portion of the
+			 * hook name, $plugin. refers to the plugin basename.
+			 *
+			 * If a plugin is silently activated (such as during an update),
+			 * this hook does not fire.
+			 *
+			 * @since 2.0.0
+			 *
+			 * @param bool $network_wide Whether to enable the plugin for all sites in the network
+			 *                           or just the current site. Multisite only. Default is false.
+			 */
 			do_action( 'activate_' . $plugin, $network_wide );
 		}
 
@@ -551,6 +583,18 @@ function activate_plugin( $plugin, $redirect = '', $network_wide = false, $silen
 		}
 
 		if ( ! $silent ) {
+			/**
+			 * Fires after a plugin has been activated.
+			 *
+			 * If a plugin is silently activated (such as during an update),
+			 * this hook does not fire.
+			 *
+			 * @since 2.9.0
+			 *
+			 * @param string $plugin       Plugin path to main plugin file with plugin data.
+			 * @param bool   $network_wide Whether to enable the plugin for all sites in the network
+			 *                             or just the current site. Multisite only. Default is false.
+			 */
 			do_action( 'activated_plugin', $plugin, $network_wide );
 		}
 
@@ -590,8 +634,21 @@ function deactivate_plugins( $plugins, $silent = false, $network_wide = null ) {
 
 		$network_deactivating = false !== $network_wide && is_plugin_active_for_network( $plugin );
 
-		if ( ! $silent )
+		if ( ! $silent ) {
+			/**
+			 * Fires before a plugin is deactivated.
+			 *
+			 * If a plugin is silently deactivated (such as during an update),
+			 * this hook does not fire.
+			 *
+			 * @since 2.9.0
+			 *
+			 * @param string $plugin               Plugin path to main plugin file with plugin data.
+			 * @param bool   $network_deactivating Whether the plugin is deactivated for all sites in the network
+			 *                                     or just the current site. Multisite only. Default is false.
+			 */
 			do_action( 'deactivate_plugin', $plugin, $network_deactivating );
+		}
 
 		if ( false !== $network_wide ) {
 			if ( is_plugin_active_for_network( $plugin ) ) {
@@ -611,7 +668,35 @@ function deactivate_plugins( $plugins, $silent = false, $network_wide = null ) {
 		}
 
 		if ( ! $silent ) {
+			/**
+			 * Fires as a specific plugin is being deactivated.
+			 *
+			 * This hook is the "deactivation" hook used internally by
+			 * register_deactivation_hook(). The dynamic portion of the
+			 * hook name, $plugin. refers to the plugin basename.
+			 *
+			 * If a plugin is silently deactivated (such as during an update),
+			 * this hook does not fire.
+			 *
+			 * @since 2.0.0
+			 *
+			 * @param bool $network_deactivating Whether the plugin is deactivated for all sites in the network
+			 *                                   or just the current site. Multisite only. Default is false.
+			 */
 			do_action( 'deactivate_' . $plugin, $network_deactivating );
+
+			/**
+			 * Fires after a plugin is deactivated.
+			 *
+			 * If a plugin is silently deactivated (such as during an update),
+			 * this hook does not fire.
+			 *
+			 * @since 2.9.0
+			 *
+			 * @param string $plugin               Plugin basename.
+			 * @param bool   $network_deactivating Whether the plugin is deactivated for all sites in the network
+			 *                                     or just the current site. Multisite only. Default false.
+			 */
 			do_action( 'deactivated_plugin', $plugin, $network_deactivating );
 		}
 	}
@@ -737,14 +822,20 @@ function delete_plugins($plugins, $redirect = '' ) {
 			$errors[] = $plugin_file;
 	}
 
+	// Remove deleted plugins from the plugin updates list.
+	if ( $current = get_site_transient('update_plugins') ) {
+		// Don't remove the plugins that weren't deleted.
+		$deleted = array_diff( $plugins, $errors );
+
+		foreach ( $deleted as $plugin_file ) {
+			unset( $current->response[ $plugin_file ] );
+		}
+
+		set_site_transient( 'update_plugins', $current );
+	}
+
 	if ( ! empty($errors) )
 		return new WP_Error('could_not_remove_plugin', sprintf(__('Could not fully remove the plugin(s) %s.'), implode(', ', $errors)) );
-
-	// Force refresh of plugin update information
-	if ( $current = get_site_transient('update_plugins') ) {
-		unset( $current->response[ $plugin_file ] );
-		set_site_transient('update_plugins', $current);
-	}
 
 	return true;
 }
@@ -766,7 +857,7 @@ function validate_active_plugins() {
 		$plugins = array();
 	}
 
-	if ( is_multisite() && is_super_admin() ) {
+	if ( is_multisite() && current_user_can( 'manage_network_plugins' ) ) {
 		$network_plugins = (array) get_site_option( 'active_sitewide_plugins', array() );
 		$plugins = array_merge( $plugins, array_keys( $network_plugins ) );
 	}
@@ -848,6 +939,7 @@ function uninstall_plugin($plugin) {
 		unset($uninstallable_plugins);
 
 		define('WP_UNINSTALL_PLUGIN', $file);
+		wp_register_plugin_realpath( WP_PLUGIN_DIR . '/' . dirname( $file ) );
 		include WP_PLUGIN_DIR . '/' . dirname($file) . '/uninstall.php';
 
 		return true;
@@ -859,9 +951,19 @@ function uninstall_plugin($plugin) {
 		update_option('uninstall_plugins', $uninstallable_plugins);
 		unset($uninstallable_plugins);
 
+		wp_register_plugin_realpath( WP_PLUGIN_DIR . '/' . $file );
 		include WP_PLUGIN_DIR . '/' . $file;
 
 		add_action( 'uninstall_' . $file, $callable );
+
+		/**
+		 * Fires in uninstall_plugin() once the plugin has been uninstalled.
+		 *
+		 * The action concatenates the 'uninstall_' prefix with the basename of the
+		 * plugin passed to {@see uninstall_plugin()} to create a dynamically-named action.
+		 *
+		 * @since 2.7.0
+		 */
 		do_action( 'uninstall_' . $file );
 	}
 }
@@ -884,8 +986,11 @@ function uninstall_plugin($plugin) {
  * @param string $capability The capability required for this menu to be displayed to the user.
  * @param string $menu_slug The slug name to refer to this menu by (should be unique for this menu)
  * @param callback $function The function to be called to output the content for this page.
- * @param string $icon_url The url to the icon to be used for this menu. Using 'none' would leave div.wp-menu-image empty
- *                         so an icon can be added as background with CSS.
+ * @param string $icon_url The url to the icon to be used for this menu.
+ *     * Pass a base64-encoded SVG using a data URI, which will be colored to match the color scheme.
+ *       This should begin with 'data:image/svg+xml;base64,'.
+ *     * Pass the name of a Dashicons helper class to use a font icon, e.g. 'dashicons-chart-pie'.
+ *     * Pass 'none' to leave div.wp-menu-image empty so an icon can be added via CSS.
  * @param int $position The position in the menu order this one should appear
  *
  * @return string The resulting page's hook_suffix
@@ -903,7 +1008,7 @@ function add_menu_page( $page_title, $menu_title, $capability, $menu_slug, $func
 		add_action( $hookname, $function );
 
 	if ( empty($icon_url) ) {
-		$icon_url = 'none';
+		$icon_url = 'dashicons-admin-generic';
 		$icon_class = 'menu-icon-generic ';
 	} else {
 		$icon_url = set_url_scheme( $icon_url );
@@ -1327,7 +1432,7 @@ function remove_submenu_page( $menu_slug, $submenu_slug ) {
  *
  * If the slug hasn't been registered properly no url will be returned
  *
- * @since 3.0
+ * @since 3.0.0
  *
  * @param string $menu_slug The slug name to refer to this menu by (should be unique for this menu)
  * @param bool $echo Whether or not to echo the url - default is true
@@ -1375,15 +1480,6 @@ function get_admin_page_parent( $parent = '' ) {
 			$parent = $_wp_real_parent_file[$parent];
 		return $parent;
 	}
-
-	/*
-	if ( !empty ( $parent_file ) ) {
-		if ( isset( $_wp_real_parent_file[$parent_file] ) )
-			$parent_file = $_wp_real_parent_file[$parent_file];
-
-		return $parent_file;
-	}
-	*/
 
 	if ( $pagenow == 'admin.php' && isset( $plugin_page ) ) {
 		foreach ( (array)$menu as $parent_menu ) {
@@ -1760,4 +1856,17 @@ function settings_fields($option_group) {
 	echo "<input type='hidden' name='option_page' value='" . esc_attr($option_group) . "' />";
 	echo '<input type="hidden" name="action" value="update" />';
 	wp_nonce_field("$option_group-options");
+}
+
+/**
+ * Clears the Plugins cache used by get_plugins() and by default, the Plugin Update cache.
+ *
+ * @since 3.7.0
+ *
+ * @param bool $clear_update_cache Whether to clear the Plugin updates cache
+ */
+function wp_clean_plugins_cache( $clear_update_cache = true ) {
+	if ( $clear_update_cache )
+		delete_site_transient( 'update_plugins' );
+	wp_cache_delete( 'plugins', 'plugins' );
 }
