@@ -694,7 +694,7 @@ $_old_files = array(
 'wp-includes/js/jquery/ui/jquery.ui.tabs.min.js',
 'wp-includes/js/jquery/ui/jquery.ui.tooltip.min.js',
 'wp-includes/js/jquery/ui/jquery.ui.widget.min.js',
-'wp-includes/js/tinymce/skins/wordpress/images/dashicon-no-alt.png',
+'wp-includes/js/tinymce/skins/wordpress/images/dashicon-no-alt.png'
 );
 
 /**
@@ -812,6 +812,8 @@ function update_core($from, $to) {
 
 	// Import $wp_version, $required_php_version, and $required_mysql_version from the new version
 	// $wp_filesystem->wp_content_dir() returned unslashed pre-2.8
+	global $wp_version, $required_php_version, $required_mysql_version;
+
 	$versions_file = trailingslashit( $wp_filesystem->wp_content_dir() ) . 'upgrade/version-current.php';
 	if ( ! $wp_filesystem->copy( $from . $distro . 'wp-includes/version.php', $versions_file ) ) {
 		$wp_filesystem->delete( $from, true );
@@ -824,7 +826,7 @@ function update_core($from, $to) {
 
 	$php_version    = phpversion();
 	$mysql_version  = $wpdb->db_version();
-	$old_wp_version = $GLOBALS['wp_version']; // The version of WordPress we're updating from
+	$old_wp_version = $wp_version; // The version of WordPress we're updating from
 	$development_build = ( false !== strpos( $old_wp_version . $wp_version, '-' )  ); // a dash in the version indicates a Development release
 	$php_compat     = version_compare( $php_version, $required_php_version, '>=' );
 	if ( file_exists( WP_CONTENT_DIR . '/db.php' ) && empty( $wpdb->is_mysql ) )
@@ -1048,6 +1050,9 @@ function update_core($from, $to) {
 		$wp_filesystem->delete($old_file, true);
 	}
 
+	// Remove any Genericons example.html's from the filesystem
+	_upgrade_422_remove_genericons();
+
 	// Upgrade DB with separate request
 	/** This filter is documented in wp-admin/includes/update-core.php */
 	apply_filters( 'update_feedback', __( 'Upgrading database&#8230;' ) );
@@ -1186,3 +1191,67 @@ window.location = 'about.php?updated';
 	exit();
 }
 add_action( '_core_updated_successfully', '_redirect_to_about_wordpress' );
+
+/**
+ * Cleans up Genericons example files.
+ *
+ * @since 4.2.2
+ */
+function _upgrade_422_remove_genericons() {
+	global $wp_theme_directories, $wp_filesystem;
+
+	// A list of the affected files using the filesystem absolute paths.
+	$affected_files = array();
+
+	// Themes
+	foreach ( $wp_theme_directories as $directory ) {
+		$affected_theme_files = _upgrade_422_find_genericons_files_in_folder( $directory );
+		$affected_files       = array_merge( $affected_files, $affected_theme_files );
+	}
+
+	// Plugins
+	$affected_plugin_files = _upgrade_422_find_genericons_files_in_folder( WP_PLUGIN_DIR );
+	$affected_files        = array_merge( $affected_files, $affected_plugin_files );
+
+	foreach ( $affected_files as $file ) {
+		$gen_dir = $wp_filesystem->find_folder( trailingslashit( dirname( $file ) ) );
+		if ( empty( $gen_dir ) ) {
+			continue;
+		}
+
+		// The path when the file is accessed via WP_Filesystem may differ in the case of FTP
+		$remote_file = $gen_dir . basename( $file );
+
+		if ( ! $wp_filesystem->exists( $remote_file ) ) {
+			continue;
+		}
+
+		if ( ! $wp_filesystem->delete( $remote_file, false, 'f' ) ) {
+			$wp_filesystem->put_contents( $remote_file, '' );
+		}
+	}
+}
+
+/**
+ * Recursively find Genericons example files in a given folder.
+ *
+ * @ignore
+ * @since 4.2.2
+ *
+ * @param string $directory Directory path. Expects trailingslashed.
+ * @return array
+ */
+function _upgrade_422_find_genericons_files_in_folder( $directory ) {
+	$directory = trailingslashit( $directory );
+	$files     = array();
+
+	if ( file_exists( "{$directory}example.html" ) && false !== strpos( file_get_contents( "{$directory}example.html" ), '<title>Genericons</title>' ) ) {
+		$files[] = "{$directory}example.html";
+	}
+
+	foreach ( glob( $directory . '*', GLOB_ONLYDIR ) as $dir ) {
+		$files = array_merge( $files, _upgrade_422_find_genericons_files_in_folder( $dir ) );
+	}
+
+	return $files;
+}
